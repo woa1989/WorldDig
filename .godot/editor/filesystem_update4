@@ -1,3 +1,13 @@
 res://Player/Player.tscn
 res://Scenes/TownScene/TownScene.tscn
 res://Scenes/MineScene/MineScene.gd
+res://test_game_systems.gd
+res://Scenes/MineScene/MineScene_fixed.gd
+res://Scenes/MineScene/MineScene.tscn
+res://Scenes/ShopScene/ShopScene.tscn
+res://Scenes/StartScene/StartScene.tscn
+res://Scenes/ActiveButton/ActiveButton.tscn
+res://Scenes/ActiveButton/active_button.gd
+res://Scenes/StartScene/main_container.gd
+res://Scenes/TownScene/TownScene.gd
+res://test_building_system.gd

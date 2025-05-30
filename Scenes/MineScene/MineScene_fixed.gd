@@ -94,6 +94,7 @@ func update_tilemap_display():
 			if terrain_material != "air":
 				# 根据材料类型设置不同的tile
 				var tile_id = get_tile_id_for_material(terrain_material)
+				print("设置位置 (" + str(x) + ", " + str(y) + ") 的tile ID: " + str(tile_id))
 				# 暂时注释掉，需要tileset资源
 				# tilemap.set_cell(0, Vector2i(x, y), 0, Vector2i(tile_id, 0))
 

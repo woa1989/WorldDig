@@ -343,11 +343,12 @@ radius = 101.0
 height = 274.0
 
 [node name="Player" type="CharacterBody2D"]
+scale = Vector2(0.5, 0.5)
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_dter7")
 animation = &"jump"
-frame_progress = 0.132295
+frame_progress = 0.066534
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(-2, -20)
