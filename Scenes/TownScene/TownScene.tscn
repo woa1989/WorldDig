@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://bhv28eyqds458"]
+
+[node name="root" type="Node2D"]
+
+[node name="Background" type="ColorRect" parent="."]
+color = Color(0, 0, 0, 1)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="Buildings" type="Node2D" parent="."]
+
+[node name="Shop" type="ColorRect" parent="Buildings"]
+color = Color(0, 0, 0, 1)
+
+[node name="MineEntrance" type="ColorRect" parent="Buildings"]
+color = Color(0, 0, 0, 1)
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="TopPanel" type="Panel" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+
+[node name="MoneyLabel" type="Label" parent="UI/TopPanel"]
+layout_mode = 0
+text = "金币: 0"
+vertical_alignment = 1
