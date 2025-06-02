@@ -5,6 +5,7 @@ extends CharacterBody2D
 
 @onready var animated_sprite = $AnimatedSprite2D
 @onready var collision_shape = $CollisionShape2D
+@onready var mining_light: Light2D # Reference to the Light2D node
 
 # 移动相关
 var speed = 300.0
@@ -20,12 +21,41 @@ var dig_cooldown = 0.3
 var is_digging = false
 var facing_direction = 1 # 1为右，-1为左
 
+# 光照相关
+var light_duration = 60.0 # 1分钟
+var current_light_time = 0.0
+var is_light_active = true
+
 func _ready():
 	# 设置初始动画
 	if animated_sprite:
 		animated_sprite.play("idle")
 
+	# 创建并配置 Light2D 节点
+	mining_light = Light2D.new()
+	mining_light.name = "MiningLight"
+	mining_light.color = Color(1.0, 1.0, 0.5) # Yellow
+	mining_light.energy = 1.0
+	mining_light.range = 250.0
+	mining_light.texture_scale = 0.2 # Make the default texture softer
+	mining_light.shadow_enabled = true
+	add_child(mining_light)
+
+	# 初始化光照时间
+	current_light_time = light_duration
+
 func _physics_process(delta):
+	# 光照计时器逻辑
+	if is_light_active:
+		current_light_time -= delta
+		if current_light_time <= 0:
+			is_light_active = false
+			if mining_light:
+				mining_light.energy = 0.1 # Dim the light
+			# Optionally, notify GameManager or MineScene to switch to global dim light
+			# For now, just dimming player's light.
+			print("Player light dimmed.")
+
 	# 重力
 	if not is_on_floor():
 		velocity.y += gravity * delta
