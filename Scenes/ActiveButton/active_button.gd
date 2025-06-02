@@ -17,8 +17,10 @@ func _ready() -> void:
 	
 
 func _on_mouse_entered() -> void:
-	AudioPlayer.stream = FlitInSound
-	AudioPlayer.play()
+	# 检查节点是否在场景树中再播放音频
+	if is_inside_tree() and AudioPlayer:
+		AudioPlayer.stream = FlitInSound
+		AudioPlayer.play()
 	if tween:
 		tween.kill()
 	
@@ -27,8 +29,10 @@ func _on_mouse_entered() -> void:
 	pass
 
 func  _on_mouse_exited() -> void:
-	AudioPlayer.stream = FlitOutSound
-	AudioPlayer.play()
+	# 检查节点是否在场景树中再播放音频
+	if is_inside_tree() and AudioPlayer:
+		AudioPlayer.stream = FlitOutSound
+		AudioPlayer.play()
 	if tween:
 		tween.kill()
 	
@@ -37,7 +41,9 @@ func  _on_mouse_exited() -> void:
 	pass
 	
 func _on_button_pressed():
-	AudioPlayer.stream = ClickSound
-	AudioPlayer.play()
+	# 检查节点是否在场景树中再播放音频
+	if is_inside_tree() and AudioPlayer:
+		AudioPlayer.stream = ClickSound
+		AudioPlayer.play()
 	print("Button pressed")
 	pass

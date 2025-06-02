@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=4 uid="uid://bhv28eyqds458"]
+[gd_scene load_steps=16 format=4 uid="uid://bhv28eyqds458"]
 
 [ext_resource type="Script" uid="uid://bcvgbf5gvi5es" path="res://Scenes/TownScene/TownScene.gd" id="1_hg8xq"]
 [ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="2_cm88s"]
@@ -65,6 +65,34 @@ physics_layer_0/collision_layer = 1
 sources/0 = SubResource("TileSetAtlasSource_ajotg")
 sources/4 = SubResource("TileSetAtlasSource_7xnal")
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_ajotg"]
+atlas = ExtResource("2_cm88s")
+region = Rect2(2824.19, 2.0955, 115.181, 126.047)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_shop"]
+size = Vector2(200, 286)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7xnal"]
+atlas = ExtResource("2_cm88s")
+region = Rect2(2050.69, 0, 127.273, 128)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mine"]
+size = Vector2(216, 252)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xrps6"]
+atlas = ExtResource("2_cm88s")
+region = Rect2(2685.11, 0, 135.073, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nh1ha"]
+atlas = ExtResource("2_cm88s")
+region = Rect2(2561.11, 0, 123.418, 128)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_left_wall"]
+size = Vector2(50, 1000)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_right_wall"]
+size = Vector2(50, 1000)
+
 [node name="root" type="Node2D"]
 script = ExtResource("1_hg8xq")
 
@@ -77,15 +105,112 @@ grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
 [node name="TileMapLayer" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAD5/wIAAAAAAAAAAAD6/wIAAAAAAAAAAAD7/wIAAAAAAAAAAAD8/wIAAAAAAAAAAAD9/wIAAAAAAAAAAAD+/wIAAAAAAAAAAAD//wIAAAAAAAAAAAAAAAIAAAAAAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAAAAAAAAAAHAAIAAAAAAAAAAAD4/wIAAAAAAAAAAAA=")
+tile_map_data = PackedByteArray("AADr/wIAAAAAAAAAAADs/wIAAAAAAAAAAADt/wIAAAAAAAAAAADu/wIAAAAAAAAAAADv/wIAAAAAAAAAAADw/wIAAAAAAAAAAADx/wIAAAAAAAAAAADy/wIAAAAAAAAAAADz/wIAAAAAAAAAAAD0/wIAAAAAAAAAAAD1/wIAAAAAAAAAAAD2/wIAAAAAAAAAAAD3/wIAAAAAAAAAAAD4/wIAAAAAAAAAAAD5/wIAAAAAAAAAAAD6/wIAAAAAAAAAAAD7/wIAAAAAAAAAAAD8/wIAAAAAAAAAAAD9/wIAAAAAAAAAAAD+/wIAAAAAAAAAAAD//wIAAAAAAAAAAAAAAAIAAAAAAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAAAAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAMAAIAAAAAAAAAAAANAAIAAAAAAAAAAAAOAAIAAAAAAAAAAAAPAAIAAAAAAAAAAAAQAAIAAAAAAAAAAAARAAIAAAAAAAAAAAASAAIAAAAAAAAAAAATAAIAAAAAAAAAAAAUAAIAAAAAAAAAAAAVAAIAAAAAAAAAAAAWAAIAAAAAAAAAAAAXAAIAAAAAAAAAAAAYAAIAAAAAAAAAAAAZAAIAAAAAAAAAAAA=")
 tile_set = SubResource("TileSet_7xnal")
-
-[node name="Player" parent="." instance=ExtResource("3_4ha8a")]
-position = Vector2(-250, 198)
 
 [node name="Camera2D" type="Camera2D" parent="."]
 
 [node name="Buildings" type="Node2D" parent="."]
+
+[node name="Shop" type="Node2D" parent="Buildings"]
+position = Vector2(400, 90)
+
+[node name="ShopSprite" type="Sprite2D" parent="Buildings/Shop"]
+scale = Vector2(3, 2.501)
+texture = SubResource("AtlasTexture_ajotg")
+
+[node name="ShopLabel" type="Label" parent="Buildings/Shop"]
+offset_left = -50.0
+offset_top = -90.0
+offset_right = 50.0
+offset_bottom = -64.0
+text = "商店"
+horizontal_alignment = 1
+
+[node name="ShopArea" type="Area2D" parent="Buildings/Shop"]
+collision_layer = 2
+
+[node name="ShopCollision" type="CollisionShape2D" parent="Buildings/Shop/ShopArea"]
+position = Vector2(-4, 11)
+shape = SubResource("RectangleShape2D_shop")
+
+[node name="ShopHint" type="Label" parent="Buildings/Shop"]
+visible = false
+modulate = Color(1, 1, 0, 1)
+offset_left = -60.0
+offset_top = 70.0
+offset_right = 60.0
+offset_bottom = 96.0
+text = "按空格键进入"
+horizontal_alignment = 1
+
+[node name="Mine" type="Node2D" parent="Buildings"]
+position = Vector2(800, 90)
+
+[node name="MineSprite" type="Sprite2D" parent="Buildings/Mine"]
+modulate = Color(0.5, 0.5, 0.5, 1)
+scale = Vector2(3, 2.667)
+texture = SubResource("AtlasTexture_7xnal")
+
+[node name="MineLabel" type="Label" parent="Buildings/Mine"]
+offset_left = -50.0
+offset_top = -80.0
+offset_right = 50.0
+offset_bottom = -54.0
+text = "矿井入口"
+horizontal_alignment = 1
+
+[node name="MineArea" type="Area2D" parent="Buildings/Mine"]
+collision_layer = 2
+
+[node name="MineCollision" type="CollisionShape2D" parent="Buildings/Mine/MineArea"]
+position = Vector2(-2, 39)
+shape = SubResource("RectangleShape2D_mine")
+
+[node name="MineHint" type="Label" parent="Buildings/Mine"]
+visible = false
+modulate = Color(1, 1, 0, 1)
+offset_left = -60.0
+offset_top = 60.0
+offset_right = 60.0
+offset_bottom = 86.0
+text = "按空格键进入"
+horizontal_alignment = 1
+
+[node name="House1" type="Node2D" parent="Buildings"]
+position = Vector2(-500, 160)
+
+[node name="House1Sprite" type="Sprite2D" parent="Buildings/House1"]
+modulate = Color(0.6, 0.6, 0.8, 1)
+scale = Vector2(2, 1.5)
+texture = SubResource("AtlasTexture_xrps6")
+
+[node name="House1Label" type="Label" parent="Buildings/House1"]
+offset_left = -40.0
+offset_top = -60.0
+offset_right = 40.0
+offset_bottom = -34.0
+text = "民居"
+horizontal_alignment = 1
+
+[node name="House2" type="Node2D" parent="Buildings"]
+position = Vector2(-50, 160)
+
+[node name="House2Sprite" type="Sprite2D" parent="Buildings/House2"]
+modulate = Color(0.8, 0.6, 0.6, 1)
+scale = Vector2(2.667, 2)
+texture = SubResource("AtlasTexture_nh1ha")
+
+[node name="House2Label" type="Label" parent="Buildings/House2"]
+offset_left = -40.0
+offset_top = -60.0
+offset_right = 40.0
+offset_bottom = -34.0
+text = "民居"
+horizontal_alignment = 1
+
+[node name="Player" parent="." instance=ExtResource("3_4ha8a")]
+position = Vector2(0, 180)
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -99,3 +224,13 @@ grow_horizontal = 2
 layout_mode = 0
 text = "金币: 0"
 vertical_alignment = 1
+
+[node name="MapBoundaries" type="StaticBody2D" parent="."]
+
+[node name="LeftWall" type="CollisionShape2D" parent="MapBoundaries"]
+position = Vector2(-1200, 0)
+shape = SubResource("RectangleShape2D_left_wall")
+
+[node name="RightWall" type="CollisionShape2D" parent="MapBoundaries"]
+position = Vector2(1200, 0)
+shape = SubResource("RectangleShape2D_right_wall")
