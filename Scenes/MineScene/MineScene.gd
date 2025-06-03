@@ -23,8 +23,15 @@ func _ready():
 	# 设置环境光
 	setup_lighting()
 	
+	# 创建火把光源容器
+	create_torch_lights_container()
+	
 	# 生成地形（通过TerrainGenerator）
 	if dirt_layer:
+		# 连接火把创建信号
+		if dirt_layer.has_signal("torch_created"):
+			dirt_layer.torch_created.connect(_on_torch_created)
+		
 		if dirt_layer.has_method("generate_terrain"):
 			print("开始地形生成")
 			dirt_layer.generate_terrain()
@@ -54,6 +61,14 @@ func setup_lighting():
 	if canvas_modulate:
 		canvas_modulate.color = Color(0.05, 0.05, 0.1, 1)
 
+func create_torch_lights_container():
+	"""创建火把光源容器"""
+	if not torch_lights:
+		torch_lights = Node2D.new()
+		torch_lights.name = "TorchLights"
+		add_child(torch_lights)
+		print("创建火把光源容器")
+
 func create_torch_lights():
 	"""为所有火把创建光源"""
 	if not dirt_layer:
@@ -70,6 +85,12 @@ func create_torch_light_at_position(grid_pos: Vector2):
 	"""在指定位置创建火把光源"""
 	if active_torch_lights.has(grid_pos):
 		return # 已经有光源了
+	
+	# 确保火把光源容器存在
+	if not torch_lights:
+		torch_lights = Node2D.new()
+		torch_lights.name = "TorchLights"
+		add_child(torch_lights)
 	
 	# 将网格坐标转换为世界坐标
 	var world_pos = dirt_layer.map_to_local(grid_pos)
@@ -98,6 +119,7 @@ func remove_torch_light_at_position(grid_pos: Vector2):
 		if light_instance and is_instance_valid(light_instance):
 			light_instance.queue_free()
 		active_torch_lights.erase(grid_pos)
+		print("移除位置", grid_pos, "的火把光源")
 		print("移除位置", grid_pos, "的火把光源")
 
 func dig_at_position(world_pos: Vector2) -> bool:
@@ -197,3 +219,84 @@ func try_place_torch_at(grid_pos: Vector2i) -> bool:
 	_on_torch_placed(Vector2(grid_pos.x, grid_pos.y))
 	
 	return true
+
+# 火把密度控制功能
+func set_torch_density(density: float):
+	"""设置火把密度 (0.1-1.0)"""
+	if dirt_layer and dirt_layer.has_method("set_torch_density"):
+		dirt_layer.set_torch_density(density)
+		print("设置火把密度为: ", density)
+
+func set_torch_distance(distance: int):
+	"""设置火把之间的最小距离"""
+	if dirt_layer and dirt_layer.has_method("set_min_torch_distance"):
+		dirt_layer.set_min_torch_distance(distance)
+		print("设置火把最小距离为: ", distance)
+		
+func regenerate_torches():
+	"""重新生成火把并更新光源"""
+	if dirt_layer and dirt_layer.has_method("regenerate_torches_with_new_density"):
+		# 清除现有光源
+		clear_all_torch_lights()
+		
+		# 重新生成火把
+		dirt_layer.regenerate_torches_with_new_density()
+		print("重新生成了火把")
+
+func clear_all_torch_lights():
+	"""清除所有火把光源"""
+	for light_instance in active_torch_lights.values():
+		if light_instance and is_instance_valid(light_instance):
+			light_instance.queue_free()
+	active_torch_lights.clear()
+	print("清除了所有火把光源")
+
+# 便捷的预设密度函数
+func set_torch_density_low():
+	"""设置低密度火把 (密度0.2, 距离8)"""
+	set_torch_density(0.2)
+	set_torch_distance(8)
+	regenerate_torches()
+	print("已设置为低密度火把")
+
+func set_torch_density_medium():
+	"""设置中等密度火把 (密度0.5, 距离5)"""
+	set_torch_density(0.5)
+	set_torch_distance(5)
+	regenerate_torches()
+	print("已设置为中等密度火把")
+
+func set_torch_density_high():
+	"""设置高密度火把 (密度0.8, 距离3)"""
+	set_torch_density(0.8)
+	set_torch_distance(3)
+	regenerate_torches()
+	print("已设置为高密度火把")
+
+func _on_torch_created(grid_pos: Vector2):
+	"""当火把被创建时的信号处理函数 - 来自TerrainGenerator的torch_created信号"""
+	create_torch_light_at_position(grid_pos)
+
+# 处理火把密度控制快捷键
+func _input(event):
+	# 只在矿井场景中处理这些快捷键
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_1:
+				set_torch_density_low()
+			KEY_2:
+				set_torch_density_medium()
+			KEY_3:
+				set_torch_density_high()
+			KEY_0:
+				clear_all_torch_lights()
+				if dirt_layer and dirt_layer.has_method("clear_all_torches"):
+					dirt_layer.clear_all_torches()
+				print("清除了所有火把")
+			KEY_H:
+				print("=== 火把密度控制帮助 ===")
+				print("数字键1 - 低密度火把 (20%密度, 8格距离)")
+				print("数字键2 - 中等密度火把 (50%密度, 5格距离)")
+				print("数字键3 - 高密度火把 (80%密度, 3格距离)")
+				print("数字键0 - 清除所有火把")
+				print("H键 - 显示此帮助信息")

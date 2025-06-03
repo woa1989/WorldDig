@@ -8,8 +8,20 @@ extends CharacterBody2D
 
 # 移动相关
 var speed = 300.0
-var jump_velocity = -400.0
+var jump_velocity = -520.0 # 增加30%弹跳力 (从-400到-520)
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
+
+# 二段跳相关
+var max_jumps = 2
+var current_jumps = 0
+var coyote_time = 0.1 # 土狼时间
+var coyote_timer = 0.0
+
+# 爬墙相关
+var wall_slide_speed = 60.0 # 贴墙滑行速度
+var wall_jump_velocity = Vector2(300, -400) # 蹬墙跳跃力度
+var wall_jump_time = 0.2 # 蹬墙跳跃持续时间
+var wall_jump_timer = 0.0
 
 # 挖掘相关
 var dig_range = 100.0
@@ -19,6 +31,8 @@ var dig_cooldown = 0.3
 # 状态
 var is_digging = false
 var facing_direction = 1 # 1为右，-1为左
+var is_wall_sliding = false
+var is_wall_jumping = false
 
 func _ready():
 	# 设置初始动画
@@ -34,37 +48,45 @@ func _ready():
 	print("Player _ready: 玩家可见性设置完成")
 
 func _physics_process(delta):
-	# 重力
+	# 更新计时器
+	if wall_jump_timer > 0:
+		wall_jump_timer -= delta
+	
+	if coyote_timer > 0:
+		coyote_timer -= delta
+	
+	# 检测墙体
+	var is_on_wall_left = is_on_wall() and velocity.x < 0
+	var is_on_wall_right = is_on_wall() and velocity.x > 0
+	var is_on_wall_any = is_on_wall_left or is_on_wall_right
+	
+	# 重置跳跃次数和土狼时间
+	if is_on_floor():
+		current_jumps = 0
+		coyote_timer = coyote_time
+		is_wall_sliding = false
+	elif was_on_floor() and coyote_timer <= 0:
+		# 刚离开地面，开始土狼时间
+		coyote_timer = coyote_time
+	
+	# 重力处理
 	if not is_on_floor():
-		velocity.y += gravity * delta
+		if is_wall_sliding:
+			# 贴墙滑行时的重力减缓
+			velocity.y += gravity * delta * 0.3
+			if velocity.y > wall_slide_speed:
+				velocity.y = wall_slide_speed
+		else:
+			velocity.y += gravity * delta
 	
-	# 跳跃
-	if Input.is_action_just_pressed("jump") and is_on_floor():
-		velocity.y = jump_velocity
-		if animated_sprite:
-			animated_sprite.play("jump")
+	# 跳跃处理
+	handle_jumping()
 	
-	# 移动
-	var direction = Input.get_axis("left", "right")
-	if direction != 0:
-		velocity.x = direction * speed
-		facing_direction = direction
-		
-		# 翻转精灵
-		if animated_sprite:
-			animated_sprite.flip_h = direction < 0
-			
-		# 播放走路动画（如果在地面）
-		if is_on_floor() and not is_digging:
-			if animated_sprite and animated_sprite.animation != "Walk":
-				animated_sprite.play("Walk")
-	else:
-		velocity.x = move_toward(velocity.x, 0, speed)
-		
-		# 播放空闲动画（如果在地面且不在挖掘）
-		if is_on_floor() and not is_digging:
-			if animated_sprite and animated_sprite.animation != "Idle":
-				animated_sprite.play("Idle")
+	# 爬墙处理
+	handle_wall_mechanics(is_on_wall_any, is_on_wall_left, is_on_wall_right)
+	
+	# 移动处理
+	handle_movement()
 	
 	# 挖掘
 	handle_digging(delta)
@@ -73,6 +95,108 @@ func _physics_process(delta):
 	handle_torch_placement()
 	
 	move_and_slide()
+
+func handle_jumping():
+	"""处理跳跃逻辑"""
+	if Input.is_action_just_pressed("jump"):
+		if is_on_floor() or coyote_timer > 0:
+			# 第一段跳跃
+			velocity.y = jump_velocity
+			current_jumps = 1
+			coyote_timer = 0
+			if animated_sprite:
+				animated_sprite.play("jump")
+		elif current_jumps < max_jumps and not is_wall_sliding:
+			# 二段跳
+			velocity.y = jump_velocity * 0.8 # 二段跳稍微弱一些
+			current_jumps += 1
+			if animated_sprite:
+				animated_sprite.play("jump")
+		elif is_wall_sliding:
+			# 蹬墙跳
+			var wall_direction = 1 if is_on_wall() and velocity.x < 0 else -1
+			velocity.x = wall_jump_velocity.x * wall_direction
+			velocity.y = wall_jump_velocity.y
+			wall_jump_timer = wall_jump_time
+			is_wall_jumping = true
+			is_wall_sliding = false
+			current_jumps = 1 # 蹬墙跳后重置为1次跳跃
+			facing_direction = wall_direction
+			if animated_sprite:
+				animated_sprite.flip_h = wall_direction < 0
+				animated_sprite.play("jump")
+
+func handle_wall_mechanics(is_on_wall_any: bool, is_on_wall_left: bool, is_on_wall_right: bool):
+	"""处理爬墙机制"""
+	var direction = Input.get_axis("left", "right")
+	
+	# 判断是否应该进入墙滑状态
+	if not is_on_floor() and is_on_wall_any and wall_jump_timer <= 0:
+		var should_wall_slide = false
+		
+		# 检查玩家是否在向墙的方向移动
+		if is_on_wall_left and direction < 0:
+			should_wall_slide = true
+		elif is_on_wall_right and direction > 0:
+			should_wall_slide = true
+		
+		# 只有在下降时才能爬墙
+		if should_wall_slide and velocity.y > 0:
+			is_wall_sliding = true
+		else:
+			is_wall_sliding = false
+	else:
+		is_wall_sliding = false
+	
+	# 结束蹬墙跳状态
+	if wall_jump_timer <= 0:
+		is_wall_jumping = false
+
+func handle_movement():
+	"""处理水平移动"""
+	var direction = Input.get_axis("left", "right")
+	
+	# 在蹬墙跳期间限制水平控制
+	if is_wall_jumping and wall_jump_timer > 0:
+		# 蹬墙跳期间减少水平控制
+		direction *= 0.3
+	
+	if direction != 0:
+		velocity.x = direction * speed
+		
+		# 只有在不是蹬墙跳时才更新面向
+		if not is_wall_jumping:
+			facing_direction = direction
+		
+		# 翻转精灵
+		if animated_sprite and not is_wall_jumping:
+			animated_sprite.flip_h = direction < 0
+			
+		# 播放走路动画（如果在地面且不在挖掘）
+		if is_on_floor() and not is_digging and not is_wall_sliding:
+			if animated_sprite and animated_sprite.animation != "Walk":
+				animated_sprite.play("Walk")
+	else:
+		# 在蹬墙跳期间保持一些动量
+		if is_wall_jumping and wall_jump_timer > 0:
+			velocity.x = move_toward(velocity.x, 0, speed * 0.5)
+		else:
+			velocity.x = move_toward(velocity.x, 0, speed)
+		
+		# 播放空闲动画（如果在地面且不在挖掘和爬墙）
+		if is_on_floor() and not is_digging and not is_wall_sliding:
+			if animated_sprite and animated_sprite.animation != "Idle":
+				animated_sprite.play("Idle")
+	
+	# 爬墙动画
+	if is_wall_sliding and animated_sprite:
+		if animated_sprite.animation != "Wall_Slide":
+			# 如果没有专门的爬墙动画，可以使用Idle或创建一个
+			animated_sprite.play("Idle")
+
+func was_on_floor() -> bool:
+	"""检查上一帧是否在地面（简化实现）"""
+	return coyote_timer > 0
 
 func handle_digging(delta):
 	# 更新挖掘计时器

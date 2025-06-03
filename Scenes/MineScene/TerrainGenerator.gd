@@ -1,5 +1,8 @@
 extends TileMapLayer
 
+# 信号定义
+signal torch_created(grid_pos: Vector2)
+
 # 地形数据
 var terrain_data = {}
 var current_durability = {}
@@ -28,7 +31,11 @@ const TERRAIN_DIRT = 0 # 泥土地形索引
 var iron_ore_chance = 0.05 # 铁矿5%概率 (从15%降低)
 var gold_ore_chance = 0.02 # 金矿2%概率 (从5%降低)
 var chest_chance = 0.003 # 宝箱0.3%概率 (从1%降低)
-var torch_chance = 0.08 # 火把8%概率保持不变
+var torch_chance = 0.03 # 火把3%概率 (从8%降低，减少密度)
+
+# 火把密度控制参数
+var min_torch_distance = 5 # 火把之间的最小距离
+var torch_density_factor = 0.5 # 整体密度系数 (0.1-1.0)，值越小火把越少
 
 # 引用其他层
 var ore_layer: TileMapLayer
@@ -148,9 +155,12 @@ func generate_tile_at_position(pos: Vector2):
 	# 注意：不在这里单独放置泥土，而是在generate_terrain中批量处理
 
 func generate_torches():
-	"""在dirt层随机生成火把"""
+	"""在dirt层随机生成火把 - 根据深度递减，带距离控制"""
 	var torch_count = 0
-	var max_torches = int(map_width * map_height * torch_chance / 10)
+	var max_torches = int(map_width * map_height * torch_chance * torch_density_factor / 10)
+	var placed_torches = [] # 记录已放置火把的位置
+	
+	print("火把生成开始，最大数量限制: ", max_torches)
 	
 	for x in range(map_width):
 		for y in range(surface_level, map_height):
@@ -164,15 +174,102 @@ func generate_torches():
 			if not terrain_data.has(pos):
 				continue
 			
-			# 随机生成火把
-			if randf() < torch_chance and torch_count < max_torches:
-				# 放置火把瓦片在dirt层
-				var cell_pos = Vector2i(int(pos.x), int(pos.y))
-				set_cell(cell_pos, 1, torch_tile) # 使用source_id=1的torch_tile
+			# 检查与已有火把的距离
+			if not is_valid_torch_position(pos, placed_torches):
+				continue
+			
+			# 计算深度相关的火把概率
+			var depth = y - surface_level
+			var depth_factor = calculate_torch_probability_by_depth(depth)
+			var adjusted_torch_chance = torch_chance * depth_factor * torch_density_factor
+			
+			# 随机生成火把，概率随深度递减
+			if randf() < adjusted_torch_chance and torch_count < max_torches:
+				# 放置火把瓦片在ore层
+				place_ore_tile(pos, torch_tile, 1) # 使用source_id=1的torch_tile
 				
 				# 记录这个位置有火把
 				terrain_data[pos]["has_torch"] = true
+				placed_torches.append(pos)
 				torch_count += 1
+				
+				# 发出信号通知创建光源
+				torch_created.emit(pos)
+				
+				# 调试信息：显示不同深度的火把分布
+				if depth <= 10:
+					print("深度 ", depth, " 生成火把，概率: ", "%.3f" % adjusted_torch_chance)
+	
+	print("火把生成完成，总共生成了 ", torch_count, " 个火把 (密度系数: ", torch_density_factor, ")")
+
+func is_valid_torch_position(pos: Vector2, existing_torches: Array) -> bool:
+	"""检查火把位置是否有效（与其他火把保持最小距离）"""
+	for torch_pos in existing_torches:
+		var distance = pos.distance_to(torch_pos)
+		if distance < min_torch_distance:
+			return false
+	return true
+
+func calculate_torch_probability_by_depth(depth: int) -> float:
+	"""根据深度计算火把生成概率的衰减因子"""
+	# 深度0-5层: 100% 概率（洞口附近火把最多）
+	if depth <= 5:
+		return 1.0
+	
+	# 深度6-15层: 线性递减到50%
+	elif depth <= 15:
+		return 1.0 - (depth - 5) * 0.05 # 每层递减5%
+	
+	# 深度16-30层: 继续递减到20%
+	elif depth <= 30:
+		return 0.5 - (depth - 15) * 0.02 # 每层递减2%
+	
+	# 深度31-50层: 缓慢递减到5%
+	elif depth <= 50:
+		return 0.2 - (depth - 30) * 0.0075 # 每层递减0.75%
+	
+	# 深度50+层: 保持最低5%概率（深层仍有少量火把）
+	else:
+		return 0.05
+
+# 火把密度控制函数
+func set_torch_density(density: float):
+	"""设置火把密度系数 (0.1-1.0)"""
+	torch_density_factor = clamp(density, 0.1, 1.0)
+	print("火把密度系数设置为: ", torch_density_factor)
+
+func set_min_torch_distance(distance: int):
+	"""设置火把之间的最小距离"""
+	min_torch_distance = max(distance, 1)
+	print("火把最小距离设置为: ", min_torch_distance)
+
+func regenerate_torches_with_new_density():
+	"""使用新的密度参数重新生成火把"""
+	print("正在使用新密度参数重新生成火把...")
+	
+	# 清除现有火把
+	clear_all_torches()
+	
+	# 重新生成火把
+	generate_torches()
+
+func clear_all_torches():
+	"""清除所有现有火把"""
+	var cleared_count = 0
+	
+	for pos in terrain_data:
+		var tile_data = terrain_data[pos]
+		if tile_data.get("has_torch", false):
+			# 移除ore层的火把瓦片
+			var cell_pos = Vector2i(int(pos.x), int(pos.y))
+			if ore_layer:
+				ore_layer.erase_cell(cell_pos)
+			
+			# 更新数据
+			tile_data["has_torch"] = false
+			cleared_count += 1
+	
+	print("清除了 ", cleared_count, " 个火把")
 
 func place_dirt_tile(pos: Vector2, tile_coords: Vector2, source_id: int = 0):
 	"""在dirt层放置瓦片"""
@@ -204,10 +301,10 @@ func dig_tile(grid_pos: Vector2) -> bool:
 	
 	# 如果有火把，只移除火把，不影响下层
 	if has_torch:
-		# 移除火把，但保留下层瓦片
+		# 移除ore层的火把瓦片
 		var cell_pos = Vector2i(int(grid_pos.x), int(grid_pos.y))
-		# 重新设置泥土瓦片，覆盖火把
-		set_cell(cell_pos, 0, dirt_tile)
+		if ore_layer:
+			ore_layer.erase_cell(cell_pos)
 		
 		tile_data["has_torch"] = false
 		
@@ -299,49 +396,6 @@ func place_dirt_with_terrain(pos: Vector2):
 		# 如果已经存在其他类型的数据，保留原有数据，只添加泥土属性
 		terrain_data[pos]["has_dirt"] = true
 
-# func update_surrounding_cells(center: Vector2i):
-# 	"""更新指定位置周围的瓦片，使它们彼此正确连接"""
-# 	# 更新中心及周围3x3区域的瓦片
-# 	for y in range(center.y - 1, center.y + 2):
-# 		for x in range(center.x - 1, center.x + 2):
-# 			var cell_pos = Vector2i(x, y)
-			
-# 			# 检查这个位置是否有瓦片
-# 			var source_id = get_cell_source_id(cell_pos)
-# 			if source_id == -1: # 如果没有瓦片，跳过
-# 				continue
-			
-# 			# 对于有泥土瓦片的位置，使用地形系统进行自动连接
-# 			if source_id == 0: # dirt层的source_id
-# 				# 获取当前瓦片的地形信息
-# 				var tile_data = get_cell_tile_data(cell_pos)
-# 				if tile_data and tile_data.terrain_set == TERRAIN_SET:
-# 					# 重新应用地形瓦片，让Godot自动处理连接
-# 					var atlas_coords = get_cell_atlas_coords(cell_pos)
-# 					set_cell(cell_pos, 0, atlas_coords)
-				
-func get_terrain_tile_type(_pos: Vector2i) -> Vector2i:
-	"""根据周围瓦片的情况，决定使用哪种瓦片"""
-	# 在这个简化版本中，我们直接返回默认的dirt_tile
-	# 实际上，我们依靠Godot的地形系统自动处理地形连接
-	
-	# 注意：以下代码用于参考，实际未使用
-	# 如果需要手动处理地形连接，可以取消注释这段代码并完善逻辑
-	"""
-	var _neighbors = {
-		"top": has_cell(Vector2i(pos.x, pos.y - 1)),
-		"right": has_cell(Vector2i(pos.x + 1, pos.y)),
-		"bottom": has_cell(Vector2i(pos.x, pos.y + 1)),
-		"left": has_cell(Vector2i(pos.x - 1, pos.y)),
-		"top_left": has_cell(Vector2i(pos.x - 1, pos.y - 1)),
-		"top_right": has_cell(Vector2i(pos.x + 1, pos.y - 1)),
-		"bottom_left": has_cell(Vector2i(pos.x - 1, pos.y + 1)),
-		"bottom_right": has_cell(Vector2i(pos.x + 1, pos.y + 1))
-	}
-	"""
-	
-	# 返回默认瓦片
-	return dirt_tile
 	
 # 辅助函数：检查指定位置是否有瓦片
 func has_cell(pos: Vector2i) -> bool:
