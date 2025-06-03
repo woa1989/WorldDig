@@ -363,5 +363,5 @@ shape = SubResource("CapsuleShape2D_kb1oy")
 color = Color(1, 0.9, 0.7, 1)
 energy = 1.5
 texture = ExtResource("78_00hy0")
-texture_scale = 3.0
+texture_scale = 6.0
 height = 640.0

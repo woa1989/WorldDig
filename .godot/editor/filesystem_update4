@@ -1,12 +1,9 @@
-res://Scenes/TownScene/TownScene.tscn
 res://Player/Player.tscn
 res://Scenes/MineScene/MineScene.tscn
 res://Scenes/ShopScene/ShopScene.tscn
+res://Scenes/TownScene/TownScene.tscn
 res://Scenes/StartScene/StartScene.tscn
 res://Scenes/ActiveButton/ActiveButton.tscn
-res://Scenes/LightScene/LightScene.tscn
 res://Scenes/MineScene/MineScene.gd
+res://Scenes/LightScene/LightScene.tscn
 res://Scenes/MineScene/TerrainGenerator.gd
-res://Singletons/GameManager.gd
-res://Player/Player.gd
-res://Scenes/UI/GameHUD.gd

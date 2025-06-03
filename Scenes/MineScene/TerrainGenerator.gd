@@ -13,7 +13,7 @@ var surface_level = 10
 
 # 瓦片定义 - dirt层 (source_id = 0)
 var dirt_tile = Vector2i(6, 5) # 默认泥土瓦片 - 完全周围都有连接的中心泥土
-var torch_tile = Vector2i(8, 0) # 火把瓦片 - 使用source_id = 1的8:0/0
+var torch_tile = Vector2i(20, 0) # 火把瓦片 - 使用source_id = 1的20, :0/0
 
 # 瓦片定义 - ore层 (source_id = 0为TileSetAtlasSource_clgjb, 1为TileSetAtlasSource_nowr7)  
 var stone = Vector2i(13, 6) # 石头瓦片位置 - 使用13:6/0

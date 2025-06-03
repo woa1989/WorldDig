@@ -204,24 +204,49 @@ func die():
 func handle_torch_placement():
 	# 检测T键放置火把
 	if Input.is_action_just_pressed("place_torch"):
+		print("检测到T键按下，尝试放置火把")
 		place_torch()
 
 # 新增 - 放置火把
 func place_torch():
 	# 检查玩家是否有火把道具
+	print("执行place_torch函数")
 	var game_manager = get_node("/root/GameManager")
-	if game_manager and game_manager.has_item("torch"):
+	if not game_manager:
+		print("错误: 找不到GameManager")
+		return
+		
+	print("检查火把数量...")
+	var torch_count = game_manager.get_item_count("torch")
+	print("火把数量:", torch_count)
+	
+	if game_manager.has_item("torch"):
+		print("有火把可以放置")
 		# 获取放置位置（就在玩家当前位置）
 		var place_position = global_position
+		print("尝试在位置放置:", place_position)
 		
 		# 获取矿场引用并尝试放置火把
 		var mine_scene = get_parent()
+		print("父场景:", mine_scene.name if mine_scene else "无")
+		
 		if mine_scene and mine_scene.has_method("place_torch"):
+			print("尝试调用place_torch方法")
+			# 尝试放置火把，如果失败，尝试在玩家附近寻找有效位置
 			if mine_scene.place_torch(place_position):
 				# 成功放置，消耗一个火把
 				game_manager.remove_item("torch", 1)
 				print("放置了一个火把！")
 			else:
-				print("无法在此处放置火把")
+				# 尝试在玩家脚下放置
+				var feet_position = global_position + Vector2(0, 50)
+				print("尝试在脚下位置放置:", feet_position)
+				if mine_scene.place_torch(feet_position):
+					game_manager.remove_item("torch", 1)
+					print("放置了一个火把在脚下!")
+				else:
+					print("无法在此处及附近放置火把")
 		else:
-			print("找不到放置火把功能")
+			print("找不到放置火把功能，父场景没有place_torch方法")
+	else:
+		print("没有火把可以放置!")

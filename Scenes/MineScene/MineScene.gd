@@ -18,6 +18,7 @@ func _ready():
 	
 	# 等待一帧确保所有节点都初始化完成
 	await get_tree().process_frame
+
 	
 	# 设置环境光
 	setup_lighting()
@@ -64,13 +65,7 @@ func create_torch_lights():
 		torch_lights.name = "TorchLights"
 		add_child(torch_lights)
 	
-	# 扫描dirt层找到所有火把
-	#var used_cells = dirt_layer.get_used_cells()
-	#for cell_pos in used_cells:
-		#var tile_data = dirt_layer.terrain_data.get(cell_pos, {})
-		#if tile_data.get("has_torch", false):
-			#create_torch_light_at_position(cell_pos)
-
+	
 func create_torch_light_at_position(grid_pos: Vector2):
 	"""在指定位置创建火把光源"""
 	if active_torch_lights.has(grid_pos):
@@ -141,31 +136,63 @@ func get_tile_at_position(world_pos: Vector2) -> Dictionary:
 # 新增 - 放置火把功能
 func place_torch(world_pos: Vector2) -> bool:
 	"""在指定世界位置放置火把"""
+	print("MineScene: 尝试放置火把在位置", world_pos)
+	
 	if not dirt_layer:
+		print("MineScene: 错误 - dirt_layer不存在")
 		return false
 		
 	# 将世界坐标转换为网格坐标
 	var grid_pos = dirt_layer.local_to_map(dirt_layer.to_local(world_pos))
+	print("MineScene: 转换为网格坐标", grid_pos)
 	
+	# 首先检查原始位置
+	if try_place_torch_at(grid_pos):
+		return true
+		
+	# 如果原始位置不行，尝试周围8个方向
+	print("MineScene: 尝试周围位置...")
+	for x_offset in [-1, 0, 1]:
+		for y_offset in [-1, 0, 1]:
+			if x_offset == 0 and y_offset == 0:
+				continue # 跳过原来的位置
+			
+			var alt_pos = Vector2i(grid_pos.x + x_offset, grid_pos.y + y_offset)
+			if try_place_torch_at(alt_pos):
+				return true
+				
+	print("MineScene: 在原始位置及周围都无法放置火把")
+	return false
+
+# 辅助函数：尝试在特定网格坐标放置火把
+func try_place_torch_at(grid_pos: Vector2i) -> bool:
 	# 检查是否有方块可以放置火把
 	if not dirt_layer.terrain_data.has(Vector2(grid_pos.x, grid_pos.y)):
-		print("没有方块可以放置火把")
 		return false
 	
 	# 检查是否已经有火把
 	var tile_data = dirt_layer.terrain_data[Vector2(grid_pos.x, grid_pos.y)]
 	if tile_data.get("has_torch", false):
-		print("此处已经有火把了")
 		return false
 	
-	# 放置火把
-	dirt_layer.set_cell(grid_pos, 1, dirt_layer.torch_tile)
+	print("MineScene: 条件检查通过，开始放置火把在位置", grid_pos)
+	
+	# 检查torch_tile是否有效
+	print("MineScene: torch_tile =", dirt_layer.torch_tile)
+	
+	# 放置火把 - 确保使用正确的torch_tile
+	if dirt_layer.get("torch_tile") != null:
+		dirt_layer.set_cell(grid_pos, 1, dirt_layer.torch_tile)
+	else:
+		# 如果dirt_layer没有torch_tile属性，使用默认值
+		dirt_layer.set_cell(grid_pos, 1, Vector2i(9, 0))
+	
 	dirt_layer.terrain_data[Vector2(grid_pos.x, grid_pos.y)]["has_torch"] = true
 	
 	# 创建火把光源
 	create_torch_light_at_position(Vector2(grid_pos.x, grid_pos.y))
 	
-	print("成功放置火把在位置", grid_pos)
+	print("MineScene: 成功放置火把在位置", grid_pos)
 	# 触发火把放置事件
 	_on_torch_placed(Vector2(grid_pos.x, grid_pos.y))
 	

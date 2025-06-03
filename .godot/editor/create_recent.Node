@@ -1,6 +1,6 @@
-TileMapLayer
 PointLight2D
 Sprite2D
+TileMapLayer
 Node2D
 CanvasModulate
 Control
