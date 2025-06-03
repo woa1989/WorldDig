@@ -24,11 +24,11 @@ var chest = Vector2i(8, 0) # 宝箱瓦片位置 - 使用source_id = 1的8:0/0
 const TERRAIN_SET = 0 # 地形集索引
 const TERRAIN_DIRT = 0 # 泥土地形索引
 
-# 矿物生成概率
-var iron_ore_chance = 0.15 # 铁矿15%概率
-var gold_ore_chance = 0.05 # 金矿5%概率
-var chest_chance = 0.01 # 宝箱1%概率
-var torch_chance = 0.08 # 火把8%概率
+# 矿物生成概率 - 降低基础概率，让大部分区域是石头
+var iron_ore_chance = 0.05 # 铁矿5%概率 (从15%降低)
+var gold_ore_chance = 0.02 # 金矿2%概率 (从5%降低)
+var chest_chance = 0.003 # 宝箱0.3%概率 (从1%降低)
+var torch_chance = 0.08 # 火把8%概率保持不变
 
 # 引用其他层
 var ore_layer: TileMapLayer
@@ -73,6 +73,7 @@ func generate_terrain():
 		print("警告: ore_layer 引用为null!")
 	
 	var tiles_generated = 0
+	var dirt_cells = [] # 收集所有泥土瓦片位置
 	
 	# 生成表面到地下的地形
 	for x in range(map_width):
@@ -86,7 +87,13 @@ func generate_terrain():
 			
 			# 根据深度决定生成什么
 			generate_tile_at_position(world_pos)
+			dirt_cells.append(Vector2i(int(x), int(y)))
 			tiles_generated += 1
+	
+	# 批量设置所有泥土瓦片的地形连接
+	if dirt_cells.size() > 0:
+		print("批量设置 ", dirt_cells.size(), " 个泥土瓦片的地形连接")
+		set_cells_terrain_connect(dirt_cells, TERRAIN_SET, TERRAIN_DIRT, false)
 	
 	print("生成了 ", tiles_generated, " 个瓦片")
 	
@@ -109,6 +116,7 @@ func is_position_near_spawn(pos: Vector2) -> bool:
 	return (dx * dx) / (hole_width * hole_width) + (dy * dy) / (hole_height * hole_height) <= 1.0
 
 func generate_tile_at_position(pos: Vector2):
+	"""在指定位置生成瓦片"""
 	var depth = pos.y - surface_level
 	
 	# 根据深度调整矿物概率 - 降低基础概率和深度影响
@@ -137,8 +145,7 @@ func generate_tile_at_position(pos: Vector2):
 		place_ore_tile(pos, stone, 0)
 		terrain_data[pos] = {"type": "stone", "durability": 1}
 	
-	# 在dirt层放置泥土（使用地形系统）
-	place_dirt_with_terrain(pos)
+	# 注意：不在这里单独放置泥土，而是在generate_terrain中批量处理
 
 func generate_torches():
 	"""在dirt层随机生成火把"""
@@ -215,9 +222,17 @@ func dig_tile(grid_pos: Vector2) -> bool:
 	
 	if current_durability[grid_pos] <= 0:
 		# 完全挖掘，移除瓦片
+		var cell_pos = Vector2i(int(grid_pos.x), int(grid_pos.y))
+		
+		# 移除ore层瓦片
 		if ore_layer:
-			ore_layer.erase_cell(grid_pos)
-		erase_cell(grid_pos) # 同时移除dirt层
+			ore_layer.erase_cell(cell_pos)
+		
+		# 移除dirt层瓦片
+		erase_cell(cell_pos)
+		
+		# 更新周围瓦片的地形连接
+		update_surrounding_terrain(cell_pos)
 		
 		# 给玩家对应的物品
 		give_reward_for_tile(tile_type)
@@ -272,14 +287,10 @@ func place_dirt_with_terrain(pos: Vector2):
 	# 将Vector2转换为Vector2i
 	var cell_pos = Vector2i(int(pos.x), int(pos.y))
 	
-	# 使用泥土瓦片（在Godot 4中，set_cell只接受最多4个参数）
-	set_cell(cell_pos, 0, dirt_tile)
-	
-	# 重要：使用Godot的自动地形系统，不需要手动指定地形参数
-	# 地形参数已在TileSet中配置
-	
-	# 更新周围的瓦片进行连接 - 尝试更新周围3x3区域的瓦片
-	# update_surrounding_cells(cell_pos)
+	# 使用Godot的地形系统设置瓦片
+	# set_cells_terrain_connect(cells, terrain_set, terrain, ignore_empty_terrains)
+	var cells_array = [cell_pos]
+	set_cells_terrain_connect(cells_array, TERRAIN_SET, TERRAIN_DIRT, false)
 	
 	# 记录在terrain_data中这个位置已经生成了泥土
 	if not terrain_data.has(pos):
@@ -335,3 +346,29 @@ func get_terrain_tile_type(_pos: Vector2i) -> Vector2i:
 # 辅助函数：检查指定位置是否有瓦片
 func has_cell(pos: Vector2i) -> bool:
 	return get_cell_source_id(pos) != -1
+
+func update_surrounding_terrain(center: Vector2i):
+	"""更新指定位置周围的瓦片地形连接"""
+	print("更新周围地形连接，中心位置: ", center)
+	
+	# 收集需要更新的瓦片位置
+	var cells_to_update = []
+	
+	# 更新中心及周围3x3区域的瓦片
+	for y in range(center.y - 1, center.y + 2):
+		for x in range(center.x - 1, center.x + 2):
+			var cell_pos = Vector2i(x, y)
+			
+			# 检查这个位置是否有瓦片
+			var source_id = get_cell_source_id(cell_pos)
+			if source_id == -1: # 如果没有瓦片，跳过
+				continue
+			
+			# 只更新dirt层的瓦片 (source_id = 0)
+			if source_id == 0:
+				cells_to_update.append(cell_pos)
+	
+	# 如果有需要更新的瓦片，使用地形系统重新连接
+	if cells_to_update.size() > 0:
+		set_cells_terrain_connect(cells_to_update, TERRAIN_SET, TERRAIN_DIRT, false)
+		print("使用地形系统更新了 ", cells_to_update.size(), " 个瓦片")
