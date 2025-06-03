@@ -345,7 +345,7 @@ radius = 101.0
 height = 274.0
 
 [node name="Player" type="CharacterBody2D"]
-scale = Vector2(0.5, 0.5)
+scale = Vector2(0.4, 0.4)
 script = ExtResource("1_3e2x5")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
@@ -357,5 +357,11 @@ frame_progress = 0.181815
 position = Vector2(-2, -20)
 shape = SubResource("CapsuleShape2D_kb1oy")
 
+[node name="Camera2D" type="Camera2D" parent="."]
+
 [node name="PointLight2D" type="PointLight2D" parent="."]
+color = Color(1, 0.9, 0.7, 1)
+energy = 1.5
 texture = ExtResource("78_00hy0")
+texture_scale = 3.0
+height = 640.0

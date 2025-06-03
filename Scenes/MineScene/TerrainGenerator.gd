@@ -1,8 +1,5 @@
 extends TileMapLayer
 
-# 地形生成器 - 挂载到Dirt TileMapLayer上
-# 负责生成洞穴地形、管理地形数据和瓦片显示
-
 # 地形数据
 var terrain_data = {}
 var current_durability = {}
@@ -10,727 +7,333 @@ var dig_progress = {}
 
 # 地图参数
 var tile_size = 128
-var map_width = 40
-var map_height = 30
+var map_width = 100
+var map_height = 100
+var surface_level = 10
 
-# 洞穴生成参数
-var cave_entrance_y = 5 # 洞穴入口深度
-var cave_height = 20 # 洞穴垂直高度
+# 瓦片定义 - dirt层 (source_id = 0)
+var dirt_tile = Vector2i(6, 5) # 默认泥土瓦片 - 完全周围都有连接的中心泥土
+var torch_tile = Vector2i(8, 0) # 火把瓦片 - 使用source_id = 1的8:0/0
 
-# source:1 
-var dirt = Vector2(4, 0) # 泥土瓦片位置
-var ground = Vector2(0, 0) # 墙壁瓦片位置
-var stone = Vector2(18, 0) # 石头瓦片位置
-var chest = Vector2(8, 0) # 宝箱瓦片位置
-var light = Vector2(20, 0) # 火把瓦片位置
+# 瓦片定义 - ore层 (source_id = 0为TileSetAtlasSource_clgjb, 1为TileSetAtlasSource_nowr7)  
+var stone = Vector2i(13, 6) # 石头瓦片位置 - 使用13:6/0
+var iron_ore = Vector2i(14, 6) # 铁矿瓦片 - 使用14:6/0
+var gold_ore = Vector2i(13, 7) # 金矿瓦片 - 使用13:7/0
+var chest = Vector2i(8, 0) # 宝箱瓦片位置 - 使用source_id = 1的8:0/0
 
-# 材料类型和耐久度
-enum TerrainType {
-	AIR,
-	DIRT,
-	STONE,
-	CHEST,
-	TORCH,
-	RARE_ORE,
-	COAL,
-	TELEPORT_BACK, # 传送回城
-	PLATFORM # 不可挖掘的平台
-}
+# 地形系统
+const TERRAIN_SET = 0 # 地形集索引
+const TERRAIN_DIRT = 0 # 泥土地形索引
 
-var terrain_durability = {
-	TerrainType.DIRT: 1, # 泥土需要挖1次
-	TerrainType.STONE: 3, # 石头需要挖3次
-	TerrainType.CHEST: 1, # 宝箱挖1次
-	TerrainType.TORCH: - 1, # 火把不可破坏
-	TerrainType.RARE_ORE: 4, # 稀有矿石需要4次
-	TerrainType.COAL: 2, # 煤炭需要2次
-	TerrainType.TELEPORT_BACK: - 1, # 传送点不可破坏
-	TerrainType.PLATFORM: - 1 # 平台不可破坏
-}
+# 矿物生成概率
+var iron_ore_chance = 0.15 # 铁矿15%概率
+var gold_ore_chance = 0.05 # 金矿5%概率
+var chest_chance = 0.01 # 宝箱1%概率
+var torch_chance = 0.08 # 火把8%概率
 
-# 火把位置数组，供照明系统使用
-var torch_positions = []
-
-# 光照相关参数
-var PLAYER_LIGHT_RADIUS = 4
-var TORCH_LIGHT_RADIUS = 3
-var light_map: Array # 存储每个格子的亮度
-var is_lit_map: Array # 存储每个格子是否被照亮
-
-signal terrain_generated
-signal torch_positions_updated(positions: Array)
+# 引用其他层
+var ore_layer: TileMapLayer
+var player_spawn_position: Vector2
 
 func _ready():
 	print("TerrainGenerator _ready 开始")
 	
-	# 确保tilemap有正确的TileSet
-	setup_tileset()
+	# 获取矿物层引用
+	ore_layer = get_parent().get_node("Ore")
 	
-	# 等待一帧确保所有系统准备就绪
-	await get_tree().process_frame
+	# 设置玩家生成位置
+	player_spawn_position = Vector2(map_width * tile_size / 2.0, surface_level * tile_size - tile_size)
+	
+	# 检查TileSet配置
+	var tileset_res = tile_set
+	if tileset_res:
+		print("TileSet加载成功")
+		print("TileSet名称: ", tileset_res.resource_name)
+		
+		# 简单测试瓦片设置
+		print("Dirt瓦片：", dirt_tile)
+		print("Stone瓦片：", stone)
+	else:
+		print("警告：未加载TileSet！")
 	
 	# 生成地形
-	generate_cave_terrain()
-	
-	print("TerrainGenerator 初始化完成！")
-	
-	initialize_light_maps()
+	generate_terrain()
+	print("地形生成完成")
 
-func setup_tileset():
-	if tile_set == null:
-		var tileset_path = "res://Scenes/MineScene/terrain_tileset.tres"
-		if ResourceLoader.exists(tileset_path):
-			tile_set = load(tileset_path)
-			print("加载了地形tileset")
-		else:
-			print("使用场景默认tileset")
-
-func generate_cave_terrain():
-	print("开始生成SteamWorld Dig风格地形...")
+func generate_terrain():
+	"""生成完整的地形"""
+	print("开始生成地形...")
+	print("地图大小: ", map_width, "x", map_height, " 表面深度: ", surface_level)
 	
-	# 初始化地形数据结构
-	for x in range(map_width):
-		terrain_data[x] = {}
-		current_durability[x] = {}
-	
-	# 生成地表层（空气）
-	generate_surface_layer()
-	print("地表层生成完成")
-	
-	# 生成地下分层结构
-	generate_underground_layers()
-	print("地下分层生成完成")
-	
-	# 生成边界墙壁
-	generate_boundary_walls()
-	print("边界墙壁生成完成")
-	
-	# 生成宝箱和特殊资源
-	generate_treasures_and_resources()
-	print("宝箱和资源生成完成")
-	
-	# 只显示边界和入口引导，不显示所有地形
-	display_initial_terrain()
-	print("初始地形显示完成")
-	
-	# 发送信号通知地形生成完成
-	terrain_generated.emit()
-	torch_positions_updated.emit(torch_positions)
-
-func read_existing_tiles():
-	# 读取场景中已经存在的瓦片数据，避免覆盖用户手动绘制的内容
-	print("读取已存在的瓦片数据...")
-	
-	# 初始化地形数据结构
-	for x in range(map_width):
-		terrain_data[x] = {}
-		current_durability[x] = {}
-	
-	# 扫描整个地图，读取已存在的瓦片
-	var existing_tile_count = 0
-	var teleport_tiles_found = 0
-	
-	for x in range(map_width):
-		for y in range(map_height):
-			var tile_pos = Vector2i(x, y)
-			var source_id = get_cell_source_id(tile_pos)
-			var atlas_coords = get_cell_atlas_coords(tile_pos)
-			
-			if source_id != -1: # 该位置有瓦片
-				# 根据瓦片的source_id和atlas_coords推断地形类型
-				var terrain_type = get_terrain_type_from_tile(source_id, atlas_coords)
-				
-				# 特殊处理：如果用户在通道区域绘制了特定瓦片，可能是传送点
-				if is_teleport_tile(x, y, source_id, atlas_coords):
-					terrain_type = TerrainType.TELEPORT_BACK
-					teleport_tiles_found += 1
-					print("在位置 (", x, ",", y, ") 发现传送点")
-				
-				terrain_data[x][y] = terrain_type
-				current_durability[x][y] = terrain_durability[terrain_type]
-				existing_tile_count += 1
-			else:
-				# 该位置为空气
-				terrain_data[x][y] = TerrainType.AIR
-				current_durability[x][y] = 0
-	
-	print("已读取", existing_tile_count, "个现有瓦片，其中包含", teleport_tiles_found, "个传送点")
-
-func is_teleport_tile(_x, _y, source_id, atlas_coords):
-	# 判断指定位置的瓦片是否为传送点
-	if source_id == 1 and atlas_coords == Vector2i(0, 0):
-		return true
-	return false
-
-func get_terrain_type_from_tile(source_id, atlas_coords):
-	# 根据瓦片的source_id和atlas_coords推断地形类型 - 只识别土、石头和宝箱
-	if source_id == 1: # 优先检查source 1
-		if atlas_coords == Vector2i(4, 0): # 泥土
-			return TerrainType.DIRT
-		elif atlas_coords == Vector2i(17, 0): # 石头
-			return TerrainType.STONE
-		elif atlas_coords == Vector2i(20, 0): # 宝箱
-			return TerrainType.CHEST
-		else:
-			return TerrainType.STONE # 默认为石头
-	elif source_id == 0: # source 0，兼容旧数据
-		if atlas_coords == Vector2i(1, 2): # 泥土
-			return TerrainType.DIRT
-		elif atlas_coords == Vector2i(0, 2): # 石头
-			return TerrainType.STONE
-		else:
-			return TerrainType.STONE # 默认为石头
+	# 首先清空现有地形
+	clear()
+	if ore_layer:
+		ore_layer.clear()
+		print("ore_layer 引用正常")
 	else:
-		return TerrainType.STONE # 默认为石头
-
-func generate_surface_layer():
-	# 生成地表层（空气层）
+		print("警告: ore_layer 引用为null!")
+	
+	var tiles_generated = 0
+	
+	# 生成表面到地下的地形
 	for x in range(map_width):
-		for y in range(cave_entrance_y):
-			terrain_data[x][y] = TerrainType.AIR
-			current_durability[x][y] = 0
-	
-	# 在入口处创建一个2x4的初始挖掘空间
-	create_entrance_chamber()
-
-var entrance_position: Vector2
-
-func create_entrance_chamber():
-	# 生成入口平台
-	var platform_width: int = 5 # 平台宽度
-	var platform_start_x: int = int(map_width / 2) - int(platform_width / 2)
-	var platform_y: int = 3 # 平台高度位置
-	var center_x: int = int(platform_width / 2)
-	
-	# 生成初始平台
-	for x in range(platform_width):
-		var platform_x = platform_start_x + x
-		if x != center_x: # 中间留空
-			terrain_data[platform_x][platform_y] = TerrainType.PLATFORM
-		else:
-			terrain_data[platform_x][platform_y] = TerrainType.AIR
+		for y in range(surface_level, map_height):
+			var world_pos = Vector2(x, y)
+			var is_near_spawn = is_position_near_spawn(world_pos)
 			
-	# 在平台上方创建空气
-	for x in range(platform_width):
-		var platform_x = platform_start_x + x
-		for y in range(platform_y):
-			terrain_data[platform_x][y] = TerrainType.AIR
+			# 如果靠近生成点，创建空洞
+			if is_near_spawn:
+				continue
 			
-	# 放置火把
-	place_torch(platform_start_x - 1, platform_y)
-	place_torch(platform_start_x + platform_width, platform_y)
+			# 根据深度决定生成什么
+			generate_tile_at_position(world_pos)
+			tiles_generated += 1
 	
-	# 记录入口位置
-	entrance_position = Vector2(int(map_width / 2), platform_y)
+	print("生成了 ", tiles_generated, " 个瓦片")
 	
-func place_torch(x: int, y: int):
-	if x >= 0 and x < map_width and y >= 0 and y < map_height:
-		terrain_data[x][y] = TerrainType.TORCH
-
-func create_entrance_guidance_terrain(start_x: int, start_y: int, chamber_width: int, chamber_height: int):
-	# 在入口空间周围创建易挖掘的泥土作为挖掘引导
-	var guidance_radius = 2
-	
-	for x in range(start_x - guidance_radius, start_x + chamber_width + guidance_radius):
-		for y in range(start_y + chamber_height, start_y + chamber_height + guidance_radius):
-			if x >= 0 and x < map_width and y >= 0 and y < map_height:
-				# 确保这个位置不在入口空间内
-				var in_chamber = (x >= start_x and x < start_x + chamber_width and
-								y >= start_y and y < start_y + chamber_height)
-				
-				if not in_chamber:
-					# 在入口下方和周围创建泥土，便于玩家开始挖掘
-					if y == start_y + chamber_height: # 紧贴入口底部的一行都是泥土
-						terrain_data[x][y] = TerrainType.DIRT
-						current_durability[x][y] = terrain_durability[TerrainType.DIRT]
-					elif abs(x - (start_x + chamber_width / 2.0)) <= 3: # 入口中央下方3格范围内主要是泥土
-						if randf() < 0.8: # 80%概率是泥土
-							terrain_data[x][y] = TerrainType.DIRT
-							current_durability[x][y] = terrain_durability[TerrainType.DIRT]
-	
-	print("入口引导地形创建完成")
-
-func generate_underground_layers():
-	# 生成分层地下结构
-	for x in range(map_width):
-		for y in range(cave_entrance_y, map_height):
-			var depth = y - cave_entrance_y
-			var terrain_type = get_terrain_type_by_depth(depth, x, y)
-			terrain_data[x][y] = terrain_type
-			current_durability[x][y] = terrain_durability[terrain_type]
-
-func get_terrain_type_by_depth(depth: int, _x: int, _y: int) -> TerrainType:
-	# 根据深度和位置确定地形类型 - 只生成土和石头
-	var noise_value = randf()
-	
-	# 浅层（0-15格）：主要是泥土
-	if depth < 15:
-		if noise_value < 0.85:
-			return TerrainType.DIRT
-		else:
-			return TerrainType.STONE
-	
-	# 中层（15-25格）：泥土和石头混合
-	elif depth < 25:
-		if noise_value < 0.6:
-			return TerrainType.DIRT
-		else:
-			return TerrainType.STONE
-	
-	# 深层（25格以上）：主要是石头，少量泥土
-	else:
-		if noise_value < 0.3:
-			return TerrainType.DIRT
-		else:
-			return TerrainType.STONE
-
-func generate_boundary_walls():
-	# 生成不可挖掘的边界墙壁
-	for y in range(map_height):
-		# 左右边界
-		terrain_data[0][y] = TerrainType.STONE
-		terrain_data[map_width - 1][y] = TerrainType.STONE
-		current_durability[0][y] = -1 # -1表示不可挖掘
-		current_durability[map_width - 1][y] = -1
-	
-	for x in range(map_width):
-		# 底部边界
-		terrain_data[x][map_height - 1] = TerrainType.STONE
-		current_durability[x][map_height - 1] = -1
-
-func generate_treasures_and_resources():
-	# 生成宝箱和特殊资源
-	generate_treasure_chests()
+	# 在dirt层生成火把
 	generate_torches()
+	
+	print("地形生成完成，包含", terrain_data.size(), "个瓦片")
 
-func display_all_terrain():
-	# 显示所有地形瓦片
-	for x in range(map_width):
-		for y in range(map_height):
-			var terrain_type = terrain_data[x][y]
-			if terrain_type != TerrainType.AIR:
-				var source_id = get_source_id_for_terrain(terrain_type)
-				var tile_vector = get_tile_vector_for_terrain(terrain_type)
-				set_cell(Vector2i(x, y), source_id, tile_vector)
+func is_position_near_spawn(pos: Vector2) -> bool:
+	"""检查位置是否靠近生成点，用于创建初始空洞"""
+	var spawn_grid = Vector2(map_width / 2.0, surface_level)
+	
+	# 创建一个椭圆形的空洞
+	var hole_width = 4
+	var hole_height = 3
+	
+	var dx = abs(pos.x - spawn_grid.x)
+	var dy = abs(pos.y - spawn_grid.y)
+	
+	return (dx * dx) / (hole_width * hole_width) + (dy * dy) / (hole_height * hole_height) <= 1.0
 
-func display_initial_terrain():
-	# 只显示边界和入口引导区域，其他地形保持隐藏直到被挖掘
-	# 显示地图边界（让玩家知道边界在哪）
-	for y in range(map_height):
-		# 左右边界
-		var left_terrain = terrain_data[0][y]
-		var right_terrain = terrain_data[map_width - 1][y]
-		
-		if left_terrain != TerrainType.AIR:
-			var source_id = get_source_id_for_terrain(left_terrain)
-			var tile_vector = get_tile_vector_for_terrain(left_terrain)
-			set_cell(Vector2i(0, y), source_id, tile_vector)
-		
-		if right_terrain != TerrainType.AIR:
-			var source_id = get_source_id_for_terrain(right_terrain)
-			var tile_vector = get_tile_vector_for_terrain(right_terrain)
-			set_cell(Vector2i(map_width - 1, y), source_id, tile_vector)
+func generate_tile_at_position(pos: Vector2):
+	"""在指定位置生成瓦片"""
+	var depth = pos.y - surface_level
 	
-	# 显示底部边界
-	for x in range(map_width):
-		var bottom_terrain = terrain_data[x][map_height - 1]
-		if bottom_terrain != TerrainType.AIR:
-			var source_id = get_source_id_for_terrain(bottom_terrain)
-			var tile_vector = get_tile_vector_for_terrain(bottom_terrain)
-			set_cell(Vector2i(x, map_height - 1), source_id, tile_vector)
+	# 根据深度调整矿物概率
+	var adjusted_iron_chance = iron_ore_chance + (depth * 0.01)
+	var adjusted_gold_chance = gold_ore_chance + (depth * 0.005)
+	var adjusted_chest_chance = chest_chance + (depth * 0.002)
 	
-	# 显示入口空间周围的引导地形，让玩家知道可以挖掘的区域
-	var entrance_x = map_width / 2.0 # 使用浮点除法避免警告
-	var chamber_width = 2
-	var chamber_height = 4
-	var start_x = int(entrance_x) - int(chamber_width / 2.0)
-	var start_y = cave_entrance_y - 1
+	# 生成随机数
+	var rand = randf()
 	
-	# 显示入口空间底部和周围的泥土引导
-	for x in range(start_x - 2, start_x + chamber_width + 2):
-		for y in range(start_y + chamber_height, start_y + chamber_height + 3):
-			if x >= 0 and x < map_width and y >= 0 and y < map_height:
-				var terrain_type = terrain_data[x][y]
-				if terrain_type != TerrainType.AIR:
-					var source_id = get_source_id_for_terrain(terrain_type)
-					var tile_vector = get_tile_vector_for_terrain(terrain_type)
-					set_cell(Vector2i(x, y), source_id, tile_vector)
+	# 决定生成什么类型的瓦片
+	if rand < adjusted_chest_chance:
+		# 生成宝箱 (ore层, source_id=1)
+		place_ore_tile(pos, chest, 1)
+		terrain_data[pos] = {"type": "chest", "durability": 1}
+	elif rand < adjusted_chest_chance + adjusted_gold_chance:
+		# 生成金矿 (ore层, source_id=0)
+		place_ore_tile(pos, gold_ore, 0)
+		terrain_data[pos] = {"type": "gold_ore", "durability": 3}
+	elif rand < adjusted_chest_chance + adjusted_gold_chance + adjusted_iron_chance:
+		# 生成铁矿 (ore层, source_id=0)
+		place_ore_tile(pos, iron_ore, 0)
+		terrain_data[pos] = {"type": "iron_ore", "durability": 2}
+	else:
+		# 生成普通石头 (ore层, source_id=0)
+		place_ore_tile(pos, stone, 0)
+		terrain_data[pos] = {"type": "stone", "durability": 1}
 	
-	print("只显示了边界和入口引导区域")
-
-func reveal_area_around_position(center_pos: Vector2, radius: int = 2):
-	# 在指定位置周围显示地形（用于玩家初始视野）
-	var center_tile = Vector2i(center_pos / tile_size)
-	
-	for dx in range(-radius, radius + 1):
-		for dy in range(-radius, radius + 1):
-			var x = center_tile.x + dx
-			var y = center_tile.y + dy
-			
-			# 确保坐标有效
-			if x >= 0 and x < map_width and y >= 0 and y < map_height:
-				var terrain_type = terrain_data[x][y]
-				if terrain_type != TerrainType.AIR:
-					var source_id = get_source_id_for_terrain(terrain_type)
-					var tile_vector = get_tile_vector_for_terrain(terrain_type)
-					set_cell(Vector2i(x, y), source_id, tile_vector)
-	
-	# 同时显示附近的火把
-	for torch_pos in torch_positions:
-		var distance = abs(torch_pos.x - center_tile.x) + abs(torch_pos.y - center_tile.y)
-		if distance <= radius + 1:
-			var source_id = get_source_id_for_terrain(TerrainType.TORCH)
-			var tile_vector = get_tile_vector_for_terrain(TerrainType.TORCH)
-			set_cell(Vector2i(torch_pos.x, torch_pos.y), source_id, tile_vector)
-
-func generate_treasure_chests():
-	var rng = RandomNumberGenerator.new()
-	rng.randomize()
-	
-	# 在地下随机生成宝箱
-	var chest_count = 0
-	var max_chests = 12
-	
-	for attempt in range(100): # 最多尝试100次
-		if chest_count >= max_chests:
-			break
-			
-		var x = rng.randi_range(2, map_width - 3)
-		var y = rng.randi_range(cave_entrance_y + 10, map_height - 3)
-		
-		# 检查该位置是否适合放置宝箱（不是空气且不是边界）
-		if terrain_data[x][y] != TerrainType.AIR and terrain_data[x][y] != TerrainType.CHEST:
-			# 深度越深，宝箱出现概率越高
-			var depth = y - cave_entrance_y
-			var chest_probability = min(0.8, depth * 0.02)
-			
-			if rng.randf() < chest_probability:
-				terrain_data[x][y] = TerrainType.CHEST
-				current_durability[x][y] = terrain_durability[TerrainType.CHEST]
-				chest_count += 1
-				print("在位置 (", x, ",", y, ") 生成宝箱")
-	
-	print("总共生成了", chest_count, "个宝箱")
+	# 在dirt层放置泥土（使用地形系统）
+	place_dirt_with_terrain(pos)
 
 func generate_torches():
-	torch_positions.clear()
-	var rng = RandomNumberGenerator.new()
-	rng.randomize()
-	
-	# 在地下随机生成火把照明
+	"""在dirt层随机生成火把"""
 	var torch_count = 0
-	var max_torches = 20
+	var max_torches = int(map_width * map_height * torch_chance / 10)
 	
-	for attempt in range(150): # 最多尝试150次
-		if torch_count >= max_torches:
-			break
+	for x in range(map_width):
+		for y in range(surface_level, map_height):
+			var pos = Vector2(x, y)
 			
-		var x = rng.randi_range(3, map_width - 4)
-		var y = rng.randi_range(cave_entrance_y + 5, map_height - 5)
-		
-		# 在石头或泥土位置放置火把，分布要相对均匀
-		if (terrain_data[x][y] == TerrainType.STONE or terrain_data[x][y] == TerrainType.DIRT):
-			# 检查附近是否已有火把（避免过于密集）
-			var too_close = false
-			for existing_torch in torch_positions:
-				var distance = abs(existing_torch.x - x) + abs(existing_torch.y - y)
-				if distance < 8: # 最小间距8格
-					too_close = true
-					break
+			# 跳过生成点附近
+			if is_position_near_spawn(pos):
+				continue
 			
-			if not too_close:
-				terrain_data[x][y] = TerrainType.TORCH
-				torch_positions.append(Vector2(x, y))
+			# 跳过没有地形数据的位置
+			if not terrain_data.has(pos):
+				continue
+			
+			# 随机生成火把
+			if randf() < torch_chance and torch_count < max_torches:
+				# 放置火把瓦片在dirt层
+				var cell_pos = Vector2i(int(pos.x), int(pos.y))
+				set_cell(cell_pos, 1, torch_tile) # 使用source_id=1的torch_tile
+				
+				# 记录这个位置有火把
+				terrain_data[pos]["has_torch"] = true
 				torch_count += 1
-				print("在位置 (", x, ",", y, ") 生成火把")
-	
-	print("总共生成了", torch_count, "个火把")
 
-# 移除不再使用的函数
+func place_dirt_tile(pos: Vector2, tile_coords: Vector2, source_id: int = 0):
+	"""在dirt层放置瓦片"""
+	set_cell(pos, source_id, tile_coords)
+	# print("Dirt瓦片放置在: ", pos, " 坐标: ", tile_coords, " source_id: ", source_id)
 
-# 移除不再使用的函数
+func place_ore_tile(pos: Vector2, tile_coords: Vector2, source_id: int = 0):
+	"""在ore层放置瓦片"""
+	if ore_layer:
+		var cell_pos = Vector2i(int(pos.x), int(pos.y))
+		ore_layer.set_cell(cell_pos, source_id, tile_coords)
+		print("Ore瓦片放置在: ", pos, " 坐标: ", tile_coords, " source_id: ", source_id)
+	else:
+		print("错误: ore_layer为null，无法放置瓦片")
 
-func initialize_essential_tiles():
-	# 只初始化边界和关键位置的瓦片，而不是全部显示
-	print("初始化边界瓦片...")
-	
-	# 初始化地图边界（确保边界是石头墙）
-	for y in range(map_height):
-		# 左右边界
-		terrain_data[0][y] = TerrainType.STONE
-		terrain_data[map_width - 1][y] = TerrainType.STONE
-		current_durability[0][y] = terrain_durability[TerrainType.STONE]
-		current_durability[map_width - 1][y] = terrain_durability[TerrainType.STONE]
-		
-		# 设置边界瓦片
-		var source_id = get_source_id_for_terrain(TerrainType.STONE)
-		var tile_vector = get_tile_vector_for_terrain(TerrainType.STONE)
-		set_cell(Vector2i(0, y), source_id, tile_vector)
-		set_cell(Vector2i(map_width - 1, y), source_id, tile_vector)
-	
-	for x in range(map_width):
-		# 底部边界
-		terrain_data[x][map_height - 1] = TerrainType.STONE
-		current_durability[x][map_height - 1] = terrain_durability[TerrainType.STONE]
-		
-		# 设置底部边界瓦片
-		var source_id = get_source_id_for_terrain(TerrainType.STONE)
-		var tile_vector = get_tile_vector_for_terrain(TerrainType.STONE)
-		set_cell(Vector2i(x, map_height - 1), source_id, tile_vector)
-	
-	# 初始化火把位置的瓦片
-	for torch_pos in torch_positions:
-		var source_id = get_source_id_for_terrain(TerrainType.TORCH)
-		var tile_vector = get_tile_vector_for_terrain(TerrainType.TORCH)
-		set_cell(Vector2i(torch_pos.x, torch_pos.y), source_id, tile_vector)
-	
-	# 在入口附近添加一些泥土作为引导
-	var entrance_x = map_width / 2.0 # 使用浮点除法避免警告
-	for x in range(int(entrance_x) - 2, int(entrance_x) + 3):
-		for y in range(cave_entrance_y, cave_entrance_y + 3):
-			if x >= 0 and x < map_width and y >= 0 and y < map_height:
-				if terrain_data[x][y] == TerrainType.STONE:
-					terrain_data[x][y] = TerrainType.DIRT
-					current_durability[x][y] = terrain_durability[TerrainType.DIRT]
-					
-					# 显示泥土瓦片
-					var source_id = get_source_id_for_terrain(TerrainType.DIRT)
-					var tile_vector = get_tile_vector_for_terrain(TerrainType.DIRT)
-					set_cell(Vector2i(x, y), source_id, tile_vector)
-	
-	print("边界和关键瓦片初始化完成")
+func dig_at_position(world_pos: Vector2) -> bool:
+	"""在世界坐标位置挖掘"""
+	var grid_pos = local_to_map(to_local(world_pos))
+	return dig_tile(grid_pos)
 
-# 光照系统相关函数
-func initialize_light_maps():
-	light_map = []
-	is_lit_map = []
-	for x in range(map_width):
-		light_map.append([])
-		is_lit_map.append([])
-		for y in range(map_height):
-			light_map[x].append(0)
-			is_lit_map[x].append(false)
-
-func update_lighting(player_position: Vector2):
-	# 重置光照图
-	for x in range(map_width):
-		for y in range(map_height):
-			light_map[x][y] = 0
-			is_lit_map[x][y] = false
-	
-	# 更新玩家光源
-	apply_light(player_position, PLAYER_LIGHT_RADIUS)
-	
-	# 更新火把光源
-	for x in range(map_width):
-		for y in range(map_height):
-			if terrain_data[x][y] == TerrainType.TORCH:
-				apply_light(Vector2(x, y), TORCH_LIGHT_RADIUS)
-
-func apply_light(source_pos: Vector2, radius: int):
-	var start_x = max(0, int(source_pos.x - radius))
-	var end_x = min(map_width - 1, int(source_pos.x + radius))
-	var start_y = max(0, int(source_pos.y - radius))
-	var end_y = min(map_height - 1, int(source_pos.y + radius))
-	
-	for x in range(start_x, end_x + 1):
-		for y in range(start_y, end_y + 1):
-			var distance = source_pos.distance_to(Vector2(x, y))
-			if distance <= radius:
-				var intensity = 1.0 - (distance / radius)
-				light_map[x][y] = max(light_map[x][y], intensity)
-				is_lit_map[x][y] = true
-
-func get_source_id_for_terrain(terrain_type):
-	match terrain_type:
-		TerrainType.DIRT:
-			return 1 # source 1 for dirt textures，使用自定义的瓦片
-		TerrainType.STONE:
-			return 1 # source 1 for stone textures，使用自定义的瓦片
-		TerrainType.CHEST:
-			return 1 # source 1 for chest
-		TerrainType.TORCH:
-			return 1 # source 1 for torch
-		TerrainType.TELEPORT_BACK:
-			return 1 # source 1 for teleport back
-		_:
-			return 1 # 默认使用source 1
-
-# 获取洞穴入口位置（世界坐标）
-func get_cave_entrance_position() -> Vector2:
-	# 入口位置在地图中央的入口空间内
-	var entrance_x = map_width / 2.0 # 使用浮点除法避免整数除法警告
-	var entrance_y = cave_entrance_y # 入口空间的中央位置
-	# 转换为世界坐标，放在入口空间的中央
-	return Vector2(entrance_x * tile_size, entrance_y * tile_size)
-
-func get_tile_vector_for_terrain(terrain_type):
-	var tile_vector
-	match terrain_type:
-		TerrainType.DIRT:
-			tile_vector = Vector2i(4, 0) # 使用类变量中定义的泥土瓦片位置
-		TerrainType.STONE:
-			tile_vector = Vector2i(17, 0) # 使用类变量中定义的石头瓦片位置
-		TerrainType.CHEST:
-			tile_vector = Vector2i(20, 0) # 宝箱瓦片位置
-		TerrainType.TORCH:
-			tile_vector = Vector2i(17, 0) # 火把瓦片位置
-		TerrainType.TELEPORT_BACK:
-			tile_vector = Vector2i(0, 0) # 传送点瓦片位置
-		_:
-			tile_vector = Vector2i(4, 0) # 默认为泥土
-	
-	return tile_vector
-
-# 挖掘相关方法
-func dig_tile(world_pos: Vector2) -> bool:
-	# 将世界坐标转换为瓦片坐标
-	var tile_pos = local_to_map(world_pos)
-	var x = tile_pos.x
-	var y = tile_pos.y
-	
-	# 检查坐标是否有效
-	if x < 0 or x >= map_width or y < 0 or y >= map_height:
+func dig_tile(grid_pos: Vector2) -> bool:
+	"""挖掘指定网格位置的瓦片"""
+	if not terrain_data.has(grid_pos):
 		return false
 	
-	# 检查是否为不可挖掘的边界墙壁
-	if current_durability[x][y] == -1:
-		return false # 边界墙壁不可挖掘
+	var tile_data = terrain_data[grid_pos]
+	var tile_type = tile_data.get("type", "stone")
+	var has_torch = tile_data.get("has_torch", false)
 	
-	# 检查该位置是否可以挖掘
-	var terrain_type = terrain_data[x][y]
-	if terrain_type == TerrainType.AIR:
-		return false # 空气不能挖掘
-	
-	# 根据地形类型调用相应的挖掘函数
-	match terrain_type:
-		TerrainType.DIRT:
-			return dig_dirt_tile(Vector2i(x, y))
-		TerrainType.CHEST:
-			return dig_chest_tile(Vector2i(x, y))
-		TerrainType.STONE:
-			return dig_stone_tile(Vector2i(x, y))
-		TerrainType.TORCH:
-			print("无法挖掘火把！")
-			return false
-		_:
-			return false
-
-func dig_dirt_tile(tile_pos):
-	# 挖掘泥土（需要1次）
-	terrain_data[tile_pos.x][tile_pos.y] = TerrainType.AIR
-	update_tile_display(tile_pos)
-	print("泥土被挖掉了！")
-	
-	# 挖掘后显示周围的方块
-	reveal_surrounding_tiles(tile_pos)
-	
-	return true
-
-func dig_stone_tile(tile_pos):
-	# 挖掘石头（需要3次）
-	var current_hp = current_durability[tile_pos.x][tile_pos.y]
-	current_hp -= 1
-	current_durability[tile_pos.x][tile_pos.y] = current_hp
-	
-	print("挖掘石头，剩余耐久度: " + str(current_hp))
-	
-	if current_hp <= 0:
-		# 石头被完全挖掉
-		terrain_data[tile_pos.x][tile_pos.y] = TerrainType.AIR
-		update_tile_display(tile_pos)
-		print("石头被挖掉了！")
+	# 如果有火把，只移除火把，不影响下层
+	if has_torch:
+		# 移除火把，但保留下层瓦片
+		var cell_pos = Vector2i(int(grid_pos.x), int(grid_pos.y))
+		# 重新设置泥土瓦片，覆盖火把
+		set_cell(cell_pos, 0, dirt_tile)
 		
-		# 挖掘完成后显示周围的方块
-		reveal_surrounding_tiles(tile_pos)
+		tile_data["has_torch"] = false
+		
+		# 给玩家火把物品
+		add_item_to_inventory("torch")
+		print("获得火把！")
+		return true
+	
+	# 挖掘ore层的瓦片
+	current_durability[grid_pos] = current_durability.get(grid_pos, tile_data.durability)
+	current_durability[grid_pos] -= 1
+	
+	if current_durability[grid_pos] <= 0:
+		# 完全挖掘，移除瓦片
+		if ore_layer:
+			ore_layer.erase_cell(grid_pos)
+		erase_cell(grid_pos) # 同时移除dirt层
+		
+		# 给玩家对应的物品
+		give_reward_for_tile(tile_type)
+		
+		# 从数据中移除
+		terrain_data.erase(grid_pos)
+		current_durability.erase(grid_pos)
+		
+		print("挖掘完成，获得:", tile_type)
 		return true
 	else:
-		# 显示挖掘进度
-		show_dig_progress(tile_pos, current_hp)
+		# 部分挖掘，显示破损效果
+		show_damage_effect(grid_pos, current_durability[grid_pos], tile_data.durability)
+		print("瓦片受损，剩余耐久度:", current_durability[grid_pos])
 		return true
 
-func dig_chest_tile(tile_pos):
-	# 挖掘宝箱（1次即可）
-	terrain_data[tile_pos.x][tile_pos.y] = TerrainType.AIR
-	update_tile_display(tile_pos)
-	
-	# 挖掘后显示周围的方块
-	reveal_surrounding_tiles(tile_pos)
-	
-	print("挖开宝箱！")
-	return true
+func give_reward_for_tile(tile_type: String):
+	"""根据瓦片类型给予奖励"""
+	match tile_type:
+		"stone":
+			add_item_to_inventory("stone")
+		"iron_ore":
+			add_item_to_inventory("iron_ore")
+		"gold_ore":
+			add_item_to_inventory("gold_ore")
+		"chest":
+			# 宝箱给予随机奖励
+			var rewards = ["gold_ore", "iron_ore", "torch", "stone"]
+			var reward = rewards[randi() % rewards.size()]
+			add_item_to_inventory(reward)
+			add_item_to_inventory("coin") # 额外金币
 
-func show_dig_progress(_tile_pos, _remaining_hp):
-	# 可以在这里添加视觉效果显示挖掘进度
+func add_item_to_inventory(item_name: String):
+	"""添加物品到背包（需要实现背包系统）"""
+	var game_manager = get_node("/root/GameManager")
+	if game_manager and game_manager.has_method("add_item"):
+		game_manager.add_item(item_name)
+	else:
+		print("获得物品:", item_name)
+
+func show_damage_effect(_grid_pos: Vector2, _current_hp: int, _max_hp: int):
+	"""显示瓦片受损效果（可以在这里添加视觉效果）"""
+	# 这里可以添加粒子效果、音效等
 	pass
 
-func update_tile_display(tile_pos):
-	# 更新单个瓦片的显示
-	var terrain_type = terrain_data[tile_pos.x][tile_pos.y]
-	if terrain_type == TerrainType.AIR:
-		erase_cell(Vector2i(tile_pos.x, tile_pos.y))
+func get_player_spawn_position() -> Vector2:
+	"""获取玩家生成位置"""
+	return Vector2(map_width * tile_size / 2.0, (surface_level - 1) * tile_size)
+
+func place_dirt_with_terrain(pos: Vector2):
+	"""放置泥土瓦片并使用自动地形连接"""
+	# 将Vector2转换为Vector2i
+	var cell_pos = Vector2i(int(pos.x), int(pos.y))
+	
+	# 使用泥土瓦片（在Godot 4中，set_cell只接受最多4个参数）
+	set_cell(cell_pos, 0, dirt_tile)
+	
+	# 重要：使用Godot的自动地形系统，不需要手动指定地形参数
+	# 地形参数已在TileSet中配置
+	
+	# 更新周围的瓦片进行连接 - 尝试更新周围3x3区域的瓦片
+	# update_surrounding_cells(cell_pos)
+	
+	# 记录在terrain_data中这个位置已经生成了泥土
+	if not terrain_data.has(pos):
+		terrain_data[pos] = {"type": "dirt", "durability": 1}
 	else:
-		var source_id = get_source_id_for_terrain(terrain_type)
-		var tile_vector = get_tile_vector_for_terrain(terrain_type)
-		set_cell(Vector2i(tile_pos.x, tile_pos.y), source_id, tile_vector)
+		# 如果已经存在其他类型的数据，保留原有数据，只添加泥土属性
+		terrain_data[pos]["has_dirt"] = true
 
-func reveal_surrounding_tiles(tile_pos):
-	# 在玩家挖掘后，显示周围的方块（递归显示2格范围内的所有方块）
-	var reveal_radius = 2
-	
-	for dx in range(-reveal_radius, reveal_radius + 1):
-		for dy in range(-reveal_radius, reveal_radius + 1):
-			var x = tile_pos.x + dx
-			var y = tile_pos.y + dy
+# func update_surrounding_cells(center: Vector2i):
+# 	"""更新指定位置周围的瓦片，使它们彼此正确连接"""
+# 	# 更新中心及周围3x3区域的瓦片
+# 	for y in range(center.y - 1, center.y + 2):
+# 		for x in range(center.x - 1, center.x + 2):
+# 			var cell_pos = Vector2i(x, y)
 			
-			# 确保坐标有效
-			if x >= 0 and x < map_width and y >= 0 and y < map_height:
-				var terrain_type = terrain_data[x][y]
-				if terrain_type != TerrainType.AIR:
-					# 显示周围的方块
-					var source_id = get_source_id_for_terrain(terrain_type)
-					var tile_vector = get_tile_vector_for_terrain(terrain_type)
-					set_cell(Vector2i(x, y), source_id, tile_vector)
+# 			# 检查这个位置是否有瓦片
+# 			var source_id = get_cell_source_id(cell_pos)
+# 			if source_id == -1: # 如果没有瓦片，跳过
+# 				continue
+			
+# 			# 对于有泥土瓦片的位置，使用地形系统进行自动连接
+# 			if source_id == 0: # dirt层的source_id
+# 				# 获取当前瓦片的地形信息
+# 				var tile_data = get_cell_tile_data(cell_pos)
+# 				if tile_data and tile_data.terrain_set == TERRAIN_SET:
+# 					# 重新应用地形瓦片，让Godot自动处理连接
+# 					var atlas_coords = get_cell_atlas_coords(cell_pos)
+# 					set_cell(cell_pos, 0, atlas_coords)
+				
+func get_terrain_tile_type(_pos: Vector2i) -> Vector2i:
+	"""根据周围瓦片的情况，决定使用哪种瓦片"""
+	# 在这个简化版本中，我们直接返回默认的dirt_tile
+	# 实际上，我们依靠Godot的地形系统自动处理地形连接
 	
-	# 额外检查并显示附近的火把
-	for torch_pos in torch_positions:
-		var distance = abs(torch_pos.x - tile_pos.x) + abs(torch_pos.y - tile_pos.y)
-		if distance <= reveal_radius + 1: # 火把显示范围稍大一些
-			var source_id = get_source_id_for_terrain(TerrainType.TORCH)
-			var tile_vector = get_tile_vector_for_terrain(TerrainType.TORCH)
-			set_cell(Vector2i(torch_pos.x, torch_pos.y), source_id, tile_vector)
-
-# 获取地形数据的方法，供其他系统使用
-func get_terrain_type(x: int, y: int) -> TerrainType:
-	if x >= 0 and x < map_width and y >= 0 and y < map_height:
-		if terrain_data.has(x) and terrain_data[x].has(y):
-			return terrain_data[x][y]
-	return TerrainType.AIR
-
-func get_terrain_data():
-	return terrain_data
-
-func get_torch_positions():
-	return torch_positions
-
-func get_map_size():
-	return Vector2i(map_width, map_height)
-
-func get_tile_size():
-	return tile_size
-
-func get_entrance_chamber_bounds() -> Dictionary:
-	# 返回入口空间的边界信息，供其他系统使用
-	var entrance_center_x = map_width / 2.0
-	var chamber_width = 2
-	var chamber_height = 4
-	var start_x = int(entrance_center_x) - int(chamber_width / 2.0)
-	var start_y = cave_entrance_y - 1
-	
-	return {
-		"start_x": start_x,
-		"start_y": start_y,
-		"width": chamber_width,
-		"height": chamber_height,
-		"center_world_pos": Vector2((start_x + chamber_width / 2.0) * tile_size, (start_y + chamber_height / 2.0) * tile_size)
+	# 注意：以下代码用于参考，实际未使用
+	# 如果需要手动处理地形连接，可以取消注释这段代码并完善逻辑
+	"""
+	var _neighbors = {
+		"top": has_cell(Vector2i(pos.x, pos.y - 1)),
+		"right": has_cell(Vector2i(pos.x + 1, pos.y)),
+		"bottom": has_cell(Vector2i(pos.x, pos.y + 1)),
+		"left": has_cell(Vector2i(pos.x - 1, pos.y)),
+		"top_left": has_cell(Vector2i(pos.x - 1, pos.y - 1)),
+		"top_right": has_cell(Vector2i(pos.x + 1, pos.y - 1)),
+		"bottom_left": has_cell(Vector2i(pos.x - 1, pos.y + 1)),
+		"bottom_right": has_cell(Vector2i(pos.x + 1, pos.y + 1))
 	}
+	"""
+	
+	# 返回默认瓦片
+	return dirt_tile
+	
+# 辅助函数：检查指定位置是否有瓦片
+func has_cell(pos: Vector2i) -> bool:
+	return get_cell_source_id(pos) != -1

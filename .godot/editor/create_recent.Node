@@ -1,8 +1,10 @@
+TileMapLayer
 PointLight2D
 Sprite2D
+Node2D
+CanvasModulate
 Control
 DirectionalLight2D
-TileMapLayer
 CollisionShape2D
 CollisionPolygon2D
 AnimatedSprite2D

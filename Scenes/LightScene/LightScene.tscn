@@ -1,0 +1,19 @@
+[gd_scene load_steps=5 format=3 uid="uid://c37th1d0s0qk"]
+
+[ext_resource type="Script" uid="uid://b6q3rbjvyjy8k" path="res://Scenes/LightScene/TorchLight.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="1_tmkin"]
+[ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="2_nqmob"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nqmob"]
+atlas = ExtResource("1_tmkin")
+region = Rect2(2569.42, 0, 117.691, 137.543)
+
+[node name="LightScene" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = SubResource("AtlasTexture_nqmob")
+
+[node name="PointLight2D" type="PointLight2D" parent="."]
+texture = ExtResource("2_nqmob")
+height = 640.0

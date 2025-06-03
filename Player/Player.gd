@@ -69,6 +69,9 @@ func _physics_process(delta):
 	# 挖掘
 	handle_digging(delta)
 	
+	# 放置火把 - 添加新功能
+	handle_torch_placement()
+	
 	move_and_slide()
 
 func handle_digging(delta):
@@ -196,3 +199,29 @@ func die():
 		animated_sprite.play("Dying")
 		# 禁用控制
 		set_physics_process(false)
+
+# 新增 - 处理放置火把
+func handle_torch_placement():
+	# 检测T键放置火把
+	if Input.is_action_just_pressed("place_torch"):
+		place_torch()
+
+# 新增 - 放置火把
+func place_torch():
+	# 检查玩家是否有火把道具
+	var game_manager = get_node("/root/GameManager")
+	if game_manager and game_manager.has_item("torch"):
+		# 获取放置位置（就在玩家当前位置）
+		var place_position = global_position
+		
+		# 获取矿场引用并尝试放置火把
+		var mine_scene = get_parent()
+		if mine_scene and mine_scene.has_method("place_torch"):
+			if mine_scene.place_torch(place_position):
+				# 成功放置，消耗一个火把
+				game_manager.remove_item("torch", 1)
+				print("放置了一个火把！")
+			else:
+				print("无法在此处放置火把")
+		else:
+			print("找不到放置火把功能")
