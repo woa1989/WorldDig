@@ -7,3 +7,4 @@ res://Scenes/ActiveButton/ActiveButton.tscn
 res://Scenes/MineScene/MineScene.gd
 res://Scenes/LightScene/LightScene.tscn
 res://Scenes/MineScene/TerrainGenerator.gd
+res://Player/Player.gd

@@ -79,25 +79,22 @@ func handle_digging(delta):
 	if dig_timer > 0:
 		dig_timer -= delta
 	
-	# 检测挖掘输入 - J键 + 方向键挖掘
-	if Input.is_action_pressed("dig"): # J键挖掘
-		if dig_timer <= 0:
-			# 获取方向输入
-			var dig_direction = Vector2.ZERO
-			if Input.is_action_pressed("left"):
-				dig_direction.x = -1
-			elif Input.is_action_pressed("right"):
-				dig_direction.x = 1
-			
-			if Input.is_action_pressed("up"):
-				dig_direction.y = -1
-			elif Input.is_action_pressed("down"):
-				dig_direction.y = 1
-			
-			# 如果没有方向输入，默认向下挖掘
-			if dig_direction == Vector2.ZERO:
-				dig_direction = Vector2(0, 1)
-			
+	# 检测挖掘输入 - 只有J键 + 方向键才能挖掘
+	if Input.is_action_pressed("dig") and dig_timer <= 0: # J键挖掘
+		# 获取方向输入
+		var dig_direction = Vector2.ZERO
+		if Input.is_action_pressed("left"):
+			dig_direction.x = -1
+		elif Input.is_action_pressed("right"):
+			dig_direction.x = 1
+		
+		if Input.is_action_pressed("up"):
+			dig_direction.y = -1
+		elif Input.is_action_pressed("down"):
+			dig_direction.y = 1
+		
+		# 只有在有方向输入时才能挖掘
+		if dig_direction != Vector2.ZERO:
 			perform_directional_dig(dig_direction)
 			dig_timer = dig_cooldown
 			
@@ -111,21 +108,11 @@ func handle_digging(delta):
 				# 创建一个计时器来结束挖掘动画
 				var timer = get_tree().create_timer(0.5)
 				timer.timeout.connect(_on_dig_animation_finished)
+		else:
+			# 如果只按J键没有方向键，给出提示
+			print("需要按住方向键来指定挖掘方向！")
 	
-	# 检测向前挖掘（空格键 + 方向）
-	if Input.is_action_pressed("jump") and is_on_floor() and facing_direction != 0:
-		if dig_timer <= 0:
-			perform_forward_dig()
-			dig_timer = dig_cooldown
-			
-			# 播放攻击动画
-			if animated_sprite and not is_digging:
-				is_digging = true
-				animated_sprite.play("Dig")
-				# 创建一个计时器来结束挖掘动画
-				var timer = get_tree().create_timer(0.5)
-				timer.timeout.connect(_on_dig_animation_finished)
-
+	
 func perform_directional_dig(direction: Vector2):
 	# 对角线挖掘时，调整距离以保持一致的挖掘范围
 	if direction.x != 0 and direction.y != 0:

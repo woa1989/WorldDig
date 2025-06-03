@@ -11,12 +11,11 @@ var map_width = 100
 var map_height = 100
 var surface_level = 10
 
-# 瓦片定义 - dirt层 (source_id = 0)
-var dirt_tile = Vector2i(6, 5) # 默认泥土瓦片 - 完全周围都有连接的中心泥土
-var torch_tile = Vector2i(20, 0) # 火把瓦片 - 使用source_id = 1的20, :0/0
+var torch_tile = Vector2i(20, 0) # 火把瓦片 - 使用source_id = 1的20:0/0
 
-# 瓦片定义 - ore层 (source_id = 0为TileSetAtlasSource_clgjb, 1为TileSetAtlasSource_nowr7)  
-var stone = Vector2i(13, 6) # 石头瓦片位置 - 使用13:6/0
+
+var dirt_tile = Vector2i(6, 5) # 默认泥土瓦片 - 完全周围都有连接的中心泥土
+var stone = Vector2i(11, 1) # 石头瓦片位置 - 使用13:6/0
 var iron_ore = Vector2i(14, 6) # 铁矿瓦片 - 使用14:6/0
 var gold_ore = Vector2i(13, 7) # 金矿瓦片 - 使用13:7/0
 var chest = Vector2i(8, 0) # 宝箱瓦片位置 - 使用source_id = 1的8:0/0
@@ -110,18 +109,17 @@ func is_position_near_spawn(pos: Vector2) -> bool:
 	return (dx * dx) / (hole_width * hole_width) + (dy * dy) / (hole_height * hole_height) <= 1.0
 
 func generate_tile_at_position(pos: Vector2):
-	"""在指定位置生成瓦片"""
 	var depth = pos.y - surface_level
 	
-	# 根据深度调整矿物概率
-	var adjusted_iron_chance = iron_ore_chance + (depth * 0.01)
-	var adjusted_gold_chance = gold_ore_chance + (depth * 0.005)
-	var adjusted_chest_chance = chest_chance + (depth * 0.002)
+	# 根据深度调整矿物概率 - 降低基础概率和深度影响
+	var adjusted_chest_chance = chest_chance + (depth * 0.0005) # 降低深度影响
+	var adjusted_gold_chance = gold_ore_chance + (depth * 0.001)
+	var adjusted_iron_chance = iron_ore_chance + (depth * 0.002)
 	
 	# 生成随机数
 	var rand = randf()
 	
-	# 决定生成什么类型的瓦片
+	# 修复概率判断逻辑 - 使用独立概率而不是累加概率
 	if rand < adjusted_chest_chance:
 		# 生成宝箱 (ore层, source_id=1)
 		place_ore_tile(pos, chest, 1)
@@ -135,7 +133,7 @@ func generate_tile_at_position(pos: Vector2):
 		place_ore_tile(pos, iron_ore, 0)
 		terrain_data[pos] = {"type": "iron_ore", "durability": 2}
 	else:
-		# 生成普通石头 (ore层, source_id=0)
+		# 生成普通石头 (ore层, source_id=0) - 大部分应该是石头
 		place_ore_tile(pos, stone, 0)
 		terrain_data[pos] = {"type": "stone", "durability": 1}
 	
