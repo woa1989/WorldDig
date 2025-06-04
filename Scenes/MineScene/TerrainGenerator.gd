@@ -134,9 +134,9 @@ func generate_background():
 	# 使用不同的瓦片ID作为背景，比如使用较暗的土壤瓦片
 	var background_tile_id = Vector2i(18, 0) # 从你的TileSet中选择合适的背景瓦片
 	
-	# 生成背景瓦片，覆盖整个地图区域
+	# 生成背景瓦片，从surface_level开始，与dirt层保持一致
 	for x in range(map_width):
-		for y in range(map_height):
+		for y in range(surface_level, map_height):
 			background_layer.set_cell(Vector2i(x, y), 1, background_tile_id)
 
 func is_position_near_spawn(pos: Vector2) -> bool:

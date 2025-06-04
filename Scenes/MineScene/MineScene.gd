@@ -4,7 +4,7 @@ extends Node2D
 @onready var ore_layer: TileMapLayer = $Ore
 @onready var player: CharacterBody2D = $Player
 @onready var light_system: DirectionalLight2D = $LightSystem
-@onready var background_sprite: Sprite2D = $ParallaxBackground/ParallaxLayer/Bg
+
 var torch_lights: Node2D # 动态创建，不用@onready
 
 # 火把照明系统
@@ -19,9 +19,6 @@ func _ready():
 	
 	# 等待一帧确保所有节点都初始化完成
 	await get_tree().process_frame
-	
-	# 设置背景
-	setup_background()
 	
 	# 设置环境光
 	setup_lighting()
@@ -282,25 +279,3 @@ func set_torch_density(density: float):
 	if dirt_layer and dirt_layer.has_method("set_torch_density"):
 		dirt_layer.set_torch_density(density)
 		print("设置火把密度为: ", density)
-
-func setup_background():
-	"""设置背景图片"""
-	if background_sprite:
-		# 获取屏幕尺寸
-		var viewport_size = get_viewport().get_visible_rect().size
-		var texture_size = background_sprite.texture.get_size()
-		
-		# 计算需要的缩放比例以覆盖整个屏幕
-		var scale_x = viewport_size.x / texture_size.x
-		var scale_y = viewport_size.y / texture_size.y
-		var scale_factor = max(scale_x, scale_y) * 2.0 # 乘以2确保覆盖更大区域
-		
-		background_sprite.scale = Vector2(scale_factor, scale_factor)
-		
-		# 获取 ParallaxLayer 并调整其 modulate 使背景在深色环境下可见
-		var parallax_layer = $ParallaxBackground/ParallaxLayer
-		if parallax_layer:
-			# 适度提高背景亮度，保持照明系统的效果
-			parallax_layer.modulate = Color(1.8, 1.8, 1.8, 1.0)
-		
-		print("背景设置完成，缩放比例: ", scale_factor, " 背景亮度调整: 1.8")

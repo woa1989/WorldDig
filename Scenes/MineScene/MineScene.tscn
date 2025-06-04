@@ -305,16 +305,18 @@ sources/1 = SubResource("TileSetAtlasSource_nowr7")
 [node name="root" type="Node2D"]
 script = ExtResource("1_script")
 
-[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
-
-[node name="ParallaxLayer" type="ParallaxLayer" parent="ParallaxBackground"]
-
-[node name="Bg" type="Sprite2D" parent="ParallaxBackground/ParallaxLayer"]
-texture = ExtResource("2_7qv5a")
-
 [node name="BackgroundTiles" type="TileMapLayer" parent="."]
 z_index = -1
 tile_set = SubResource("TileSet_nowr7")
+
+[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
+
+[node name="ParallaxLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.5, 0.5)
+
+[node name="Bg" type="Sprite2D" parent="ParallaxBackground/ParallaxLayer"]
+scale = Vector2(4, 4)
+texture = ExtResource("2_7qv5a")
 
 [node name="Dirt" type="TileMapLayer" parent="."]
 tile_set = SubResource("TileSet_nowr7")
