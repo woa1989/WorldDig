@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cq8xgdlj7yad"]
 
-[ext_resource type="Script" path="res://Scenes/UI/GameHUD.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://dwnf15s3jkxg1" path="res://Scenes/UI/GameHUD.gd" id="1_script"]
 [ext_resource type="FontFile" uid="uid://db3rsqtwn8hjv" path="res://Assets/Font/VonwaonBitmap-16px.ttf" id="2_font"]
 
 [node name="GameHUD" type="Control"]
@@ -8,16 +8,18 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_script")
 
 [node name="TopPanel" type="Panel" parent="."]
+modulate = Color(1, 1, 0, 0.960784)
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 80.0
-modulate = Color(1, 1, 1, 0.8)
-color = Color(0, 0, 0, 0.6)
+grow_horizontal = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="TopPanel"]
 layout_mode = 1
@@ -28,6 +30,8 @@ offset_left = 20.0
 offset_top = 10.0
 offset_right = -20.0
 offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="LeftInfo" type="VBoxContainer" parent="TopPanel/HBoxContainer"]
 layout_mode = 2
@@ -66,14 +70,15 @@ text = "按I打开背包 | J+方向键挖掘"
 horizontal_alignment = 2
 
 [node name="BottomPanel" type="Panel" parent="."]
+modulate = Color(1, 1, 0, 0.8)
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -60.0
-modulate = Color(1, 1, 1, 0.8)
-color = Color(0, 0, 0, 0.6)
+grow_horizontal = 2
+grow_vertical = 0
 
 [node name="QuickBar" type="HBoxContainer" parent="BottomPanel"]
 layout_mode = 1
@@ -84,6 +89,8 @@ offset_left = 20.0
 offset_top = 5.0
 offset_right = -20.0
 offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="TorchCount" type="Label" parent="BottomPanel/QuickBar"]
 layout_mode = 2

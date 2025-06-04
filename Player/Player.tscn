@@ -118,9 +118,9 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("12_l6x1a")
 }],
-"loop": true,
+"loop": false,
 "name": &"Dig",
-"speed": 15.0
+"speed": 30.0
 }, {
 "frames": [{
 "duration": 1.0,
@@ -350,8 +350,9 @@ script = ExtResource("1_3e2x5")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_dter7")
-animation = &"jump"
-frame_progress = 0.181815
+animation = &"Dig"
+frame = 11
+frame_progress = 1.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(-2, -20)

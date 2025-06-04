@@ -8,6 +8,15 @@ var terrain_data = {}
 var current_durability = {}
 var dig_progress = {}
 
+# 血量显示系统
+var health_bars = {} # 存储血量条的字典
+var health_bar_container: Node2D # 血量条容器
+var health_bar_scene = preload("res://Scenes/MineScene/HealthBar.tscn") # 预制血量条场景
+
+# 粒子效果系统  
+var particle_container: Node2D # 粒子效果容器
+var destroy_particle_scene = preload("res://Assets/DestroyParticle.tscn") # 销毁粒子效果
+
 # 地图参数
 var tile_size = 128
 var map_width = 100
@@ -41,6 +50,14 @@ var torch_density_factor = 0.5 # 整体密度系数 (0.1-1.0)，值越小火把�
 var ore_layer: TileMapLayer
 var player_spawn_position: Vector2
 
+# 奖励表驱动
+var tile_rewards = {
+	"stone": "stone",
+	"iron_ore": "iron_ore",
+	"gold_ore": "gold_ore",
+	"chest": ["gold_ore", "iron_ore", "torch", "stone", "coin"]
+}
+
 func _ready():
 	print("TerrainGenerator _ready 开始")
 	
@@ -64,6 +81,7 @@ func _ready():
 	
 	# 生成地形
 	generate_terrain()
+	generate_background() # 添加背景生成
 	print("地形生成完成")
 
 func generate_terrain():
@@ -109,6 +127,18 @@ func generate_terrain():
 	
 	print("地形生成完成，包含", terrain_data.size(), "个瓦片")
 
+func generate_background():
+	"""生成背景瓦片"""
+	var background_layer = get_parent().get_node("BackgroundTiles")
+	
+	# 使用不同的瓦片ID作为背景，比如使用较暗的土壤瓦片
+	var background_tile_id = Vector2i(18, 0) # 从你的TileSet中选择合适的背景瓦片
+	
+	# 生成背景瓦片，覆盖整个地图区域
+	for x in range(map_width):
+		for y in range(map_height):
+			background_layer.set_cell(Vector2i(x, y), 1, background_tile_id)
+
 func is_position_near_spawn(pos: Vector2) -> bool:
 	"""检查位置是否靠近生成点，用于创建初始空洞"""
 	var spawn_grid = Vector2(map_width / 2.0, surface_level)
@@ -138,19 +168,19 @@ func generate_tile_at_position(pos: Vector2):
 	if rand < adjusted_chest_chance:
 		# 生成宝箱 (ore层, source_id=1)
 		place_ore_tile(pos, chest, 1)
-		terrain_data[pos] = {"type": "chest", "durability": 1}
+		terrain_data[pos] = {"type": "chest", "durability": 2} # 血量+1
 	elif rand < adjusted_chest_chance + adjusted_gold_chance:
 		# 生成金矿 (ore层, source_id=0)
 		place_ore_tile(pos, gold_ore, 0)
-		terrain_data[pos] = {"type": "gold_ore", "durability": 3}
+		terrain_data[pos] = {"type": "gold_ore", "durability": 4} # 血量+1 (从3->4)
 	elif rand < adjusted_chest_chance + adjusted_gold_chance + adjusted_iron_chance:
 		# 生成铁矿 (ore层, source_id=0)
 		place_ore_tile(pos, iron_ore, 0)
-		terrain_data[pos] = {"type": "iron_ore", "durability": 2}
+		terrain_data[pos] = {"type": "iron_ore", "durability": 3} # 血量+1 (从2->3)
 	else:
 		# 生成普通石头 (ore层, source_id=0) - 大部分应该是石头
 		place_ore_tile(pos, stone, 0)
-		terrain_data[pos] = {"type": "stone", "durability": 1}
+		terrain_data[pos] = {"type": "stone", "durability": 2} # 血量+1 (从1->2)
 	
 	# 注意：不在这里单独放置泥土，而是在generate_terrain中批量处理
 
@@ -175,7 +205,7 @@ func generate_torches():
 				continue
 			
 			# 检查与已有火把的距离
-			if not is_valid_torch_position(pos, placed_torches):
+			if not is_valid_torch_position(pos, placed_torches, min_torch_distance):
 				continue
 			
 			# 计算深度相关的火把概率
@@ -202,11 +232,10 @@ func generate_torches():
 	
 	print("火把生成完成，总共生成了 ", torch_count, " 个火把 (密度系数: ", torch_density_factor, ")")
 
-func is_valid_torch_position(pos: Vector2, existing_torches: Array) -> bool:
+func is_valid_torch_position(pos: Vector2, existing_torches: Array, min_distance: int) -> bool:
 	"""检查火把位置是否有效（与其他火把保持最小距离）"""
 	for torch_pos in existing_torches:
-		var distance = pos.distance_to(torch_pos)
-		if distance < min_torch_distance:
+		if pos.distance_to(torch_pos) < min_distance:
 			return false
 	return true
 
@@ -281,9 +310,9 @@ func place_ore_tile(pos: Vector2, tile_coords: Vector2, source_id: int = 0):
 	if ore_layer:
 		var cell_pos = Vector2i(int(pos.x), int(pos.y))
 		ore_layer.set_cell(cell_pos, source_id, tile_coords)
-		print("Ore瓦片放置在: ", pos, " 坐标: ", tile_coords, " source_id: ", source_id)
-	else:
-		print("错误: ore_layer为null，无法放置瓦片")
+		# print("Ore瓦片放置在: ", pos, " 坐标: ", tile_coords, " source_id: ", source_id)
+	# else:
+		# print("错误: ore_layer为null，无法放置瓦片")
 
 func dig_at_position(world_pos: Vector2) -> bool:
 	"""在世界坐标位置挖掘"""
@@ -292,6 +321,11 @@ func dig_at_position(world_pos: Vector2) -> bool:
 
 func dig_tile(grid_pos: Vector2) -> bool:
 	"""挖掘指定网格位置的瓦片"""
+	# 边界检查：防止挖穿地图边界
+	if grid_pos.x <= 0 or grid_pos.x >= map_width - 1 or grid_pos.y <= surface_level or grid_pos.y >= map_height - 1:
+		print("无法挖掘地图边界!")
+		return false
+	
 	if not terrain_data.has(grid_pos):
 		return false
 	
@@ -339,6 +373,15 @@ func dig_tile(grid_pos: Vector2) -> bool:
 		current_durability.erase(grid_pos)
 		
 		print("挖掘完成，获得:", tile_type)
+		# 安全地移除血量条
+		var bar_key = "%s_%s" % [int(grid_pos.x), int(grid_pos.y)]
+		if health_bars.has(bar_key):
+			var health_bar = health_bars[bar_key]
+			if is_instance_valid(health_bar):
+				health_bar.queue_free()
+			health_bars.erase(bar_key)
+		# --- 烟尘爆炸特效 ---
+		show_destroy_particles(grid_pos, tile_type)
 		return true
 	else:
 		# 部分挖掘，显示破损效果
@@ -348,19 +391,21 @@ func dig_tile(grid_pos: Vector2) -> bool:
 
 func give_reward_for_tile(tile_type: String):
 	"""根据瓦片类型给予奖励"""
-	match tile_type:
-		"stone":
-			add_item_to_inventory("stone")
-		"iron_ore":
-			add_item_to_inventory("iron_ore")
-		"gold_ore":
-			add_item_to_inventory("gold_ore")
-		"chest":
-			# 宝箱给予随机奖励
-			var rewards = ["gold_ore", "iron_ore", "torch", "stone"]
-			var reward = rewards[randi() % rewards.size()]
-			add_item_to_inventory(reward)
-			add_item_to_inventory("coin") # 额外金币
+	var game_manager = get_node("/root/GameManager")
+	if tile_type == "chest":
+		var rewards = tile_rewards["chest"]
+		var reward = rewards[randi() % rewards.size()]
+		if game_manager and game_manager.has_method("add_item"):
+			game_manager.add_item(reward)
+			game_manager.add_item("coin")
+		else:
+			print("获得物品:", reward, "+ coin")
+	elif tile_rewards.has(tile_type):
+		var reward = tile_rewards[tile_type]
+		if game_manager and game_manager.has_method("add_item"):
+			game_manager.add_item(reward)
+		else:
+			print("获得物品:", reward)
 
 func add_item_to_inventory(item_name: String):
 	"""添加物品到背包（需要实现背包系统）"""
@@ -370,10 +415,33 @@ func add_item_to_inventory(item_name: String):
 	else:
 		print("获得物品:", item_name)
 
-func show_damage_effect(_grid_pos: Vector2, _current_hp: int, _max_hp: int):
-	"""显示瓦片受损效果（可以在这里添加视觉效果）"""
-	# 这里可以添加粒子效果、音效等
-	pass
+func show_damage_effect(grid_pos: Vector2, current_hp: int, max_hp: int):
+	"""显示瓦片受损效果"""
+	var bar_key = "%s_%s" % [int(grid_pos.x), int(grid_pos.y)]
+	
+	# 移除旧血量条
+	if health_bars.has(bar_key):
+		var old_bar = health_bars[bar_key]
+		if is_instance_valid(old_bar):
+			old_bar.queue_free()
+		health_bars.erase(bar_key)
+		# 等待一帧确保节点被移除
+		await get_tree().process_frame
+	
+	# 如果血量为0，不需要创建新的血量条
+	if current_hp <= 0:
+		return
+	
+	# 使用预制的血量条场景
+	var health_bar = health_bar_scene.instantiate()
+	health_bar.name = "HPBar_" + bar_key
+	add_child(health_bar)
+	
+	# 存储到字典中以便管理
+	health_bars[bar_key] = health_bar
+	
+	# 设置血量条参数
+	health_bar.setup(grid_pos, max_hp, current_hp)
 
 func get_player_spawn_position() -> Vector2:
 	"""获取玩家生成位置"""
@@ -391,7 +459,7 @@ func place_dirt_with_terrain(pos: Vector2):
 	
 	# 记录在terrain_data中这个位置已经生成了泥土
 	if not terrain_data.has(pos):
-		terrain_data[pos] = {"type": "dirt", "durability": 1}
+		terrain_data[pos] = {"type": "dirt", "durability": 2} # 血量+1 (从1->2)
 	else:
 		# 如果已经存在其他类型的数据，保留原有数据，只添加泥土属性
 		terrain_data[pos]["has_dirt"] = true
@@ -426,3 +494,16 @@ func update_surrounding_terrain(center: Vector2i):
 	if cells_to_update.size() > 0:
 		set_cells_terrain_connect(cells_to_update, TERRAIN_SET, TERRAIN_DIRT, false)
 		print("使用地形系统更新了 ", cells_to_update.size(), " 个瓦片")
+
+func show_destroy_particles(grid_pos: Vector2, tile_type: String = "stone"):
+	"""显示销毁粒子效果"""
+	# 实例化销毁粒子效果场景
+	var destroy_particles = destroy_particle_scene.instantiate()
+	add_child(destroy_particles)
+	
+	# 设置粒子效果位置
+	var world_position = map_to_local(grid_pos)
+	destroy_particles.setup_position(world_position)
+	
+	# 根据瓦片类型设置粒子颜色
+	destroy_particles.setup_particle_color(tile_type)

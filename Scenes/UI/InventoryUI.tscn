@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://bq8xgdlj7yad"]
 
-[ext_resource type="Script" path="res://Scenes/UI/InventoryUI.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://d20a4i2d5ay48" path="res://Scenes/UI/InventoryUI.gd" id="1_script"]
 [ext_resource type="FontFile" uid="uid://db3rsqtwn8hjv" path="res://Assets/Font/VonwaonBitmap-16px.ttf" id="2_font"]
 
 [node name="InventoryUI" type="Control"]
@@ -8,15 +8,23 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_script")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -250.0
-offset_bottom = 400.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -125.0
+offset_top = -200.0
+offset_right = 125.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0, 0, 0, 0.7)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Background"]
@@ -28,6 +36,8 @@ offset_left = 10.0
 offset_top = 10.0
 offset_right = -10.0
 offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Title" type="Label" parent="Background/VBoxContainer"]
 layout_mode = 2

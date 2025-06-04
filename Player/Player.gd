@@ -7,24 +7,25 @@ extends CharacterBody2D
 @onready var collision_shape = $CollisionShape2D
 
 # 移动相关
-var speed = 300.0
-var jump_velocity = -520.0 # 增加30%弹跳力 (从-400到-520)
-var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
+var speed = 345.6 # 在288.0基础上增加20% (288.0 * 1.2)
+var jump_velocity = -540.0 # 在-450.0基础上增加20% (-450.0 * 1.2)
+var gravity = 1200.0
 
 # 二段跳相关
-var max_jumps = 2
+var max_jumps = 1
 var current_jumps = 0
-var coyote_time = 0.1 # 土狼时间
+var coyote_time = 0.05
 var coyote_timer = 0.0
 
-# 爬墙相关
-var wall_slide_speed = 60.0 # 贴墙滑行速度
-var wall_jump_velocity = Vector2(300, -400) # 蹬墙跳跃力度
-var wall_jump_time = 0.2 # 蹬墙跳跃持续时间
-var wall_jump_timer = 0.0
+# 墙跳相关
+var wall_jump_velocity = Vector2(200.0, -500.0) # 墙跳的水平和垂直速度
+var wall_slide_speed = 100.0 # 贴墙滑行速度
+var wall_jump_time = 0.2 # 墙跳后的控制延迟时间
+var wall_jump_timer = 0.0 # 墙跳计时器
+
 
 # 挖掘相关
-var dig_range = 100.0
+var dig_range = 128.0
 var dig_timer = 0.0
 var dig_cooldown = 0.3
 
@@ -33,6 +34,7 @@ var is_digging = false
 var facing_direction = 1 # 1为右，-1为左
 var is_wall_sliding = false
 var is_wall_jumping = false
+var wall_direction = 0 # 墙壁方向：1为右墙，-1为左墙，0为无墙
 
 func _ready():
 	# 设置初始动画
@@ -48,23 +50,24 @@ func _ready():
 	print("Player _ready: 玩家可见性设置完成")
 
 func _physics_process(delta):
-	# 更新计时器
-	if wall_jump_timer > 0:
-		wall_jump_timer -= delta
-	
 	if coyote_timer > 0:
 		coyote_timer -= delta
 	
-	# 检测墙体
-	var is_on_wall_left = is_on_wall() and velocity.x < 0
-	var is_on_wall_right = is_on_wall() and velocity.x > 0
-	var is_on_wall_any = is_on_wall_left or is_on_wall_right
+	if wall_jump_timer > 0:
+		wall_jump_timer -= delta
+	
+	# 墙壁检测
+	detect_wall()
+	
+	# 统一输入处理
+	handle_input(delta)
 	
 	# 重置跳跃次数和土狼时间
 	if is_on_floor():
 		current_jumps = 0
 		coyote_timer = coyote_time
 		is_wall_sliding = false
+		is_wall_jumping = false
 	elif was_on_floor() and coyote_timer <= 0:
 		# 刚离开地面，开始土狼时间
 		coyote_timer = coyote_time
@@ -72,7 +75,7 @@ func _physics_process(delta):
 	# 重力处理
 	if not is_on_floor():
 		if is_wall_sliding:
-			# 贴墙滑行时的重力减缓
+			# 贴墙滑行时的重力减缓，限制下降速度
 			velocity.y += gravity * delta * 0.3
 			if velocity.y > wall_slide_speed:
 				velocity.y = wall_slide_speed
@@ -82,16 +85,13 @@ func _physics_process(delta):
 	# 跳跃处理
 	handle_jumping()
 	
-	# 爬墙处理
-	handle_wall_mechanics(is_on_wall_any, is_on_wall_left, is_on_wall_right)
-	
 	# 移动处理
 	handle_movement()
 	
 	# 挖掘
 	handle_digging(delta)
 	
-	# 放置火把 - 添加新功能
+	# 放置火把
 	handle_torch_placement()
 	
 	move_and_slide()
@@ -99,89 +99,65 @@ func _physics_process(delta):
 func handle_jumping():
 	"""处理跳跃逻辑"""
 	if Input.is_action_just_pressed("jump"):
-		if is_on_floor() or coyote_timer > 0:
+		# 墙跳优先级最高
+		if is_wall_sliding and wall_direction != 0:
+			# 墙跳：向墙的反方向跳跃
+			velocity.x = -wall_direction * wall_jump_velocity.x
+			velocity.y = wall_jump_velocity.y
+			is_wall_jumping = true
+			is_wall_sliding = false
+			wall_jump_timer = wall_jump_time
+			current_jumps = 1
+			play_anim("jump")
+			print("墙跳！方向：", -wall_direction)
+		# 普通跳跃
+		elif is_on_floor() or coyote_timer > 0:
 			# 第一段跳跃
 			velocity.y = jump_velocity
 			current_jumps = 1
 			coyote_timer = 0
-			if animated_sprite:
-				animated_sprite.play("jump")
-		elif current_jumps < max_jumps and not is_wall_sliding:
+			play_anim("jump")
+		elif current_jumps < max_jumps:
 			# 二段跳
-			velocity.y = jump_velocity * 0.8 # 二段跳稍微弱一些
+			velocity.y = jump_velocity * 0.8
 			current_jumps += 1
-			if animated_sprite:
-				animated_sprite.play("jump")
-		elif is_wall_sliding:
-			# 蹬墙跳
-			var wall_direction = 1 if is_on_wall() and velocity.x < 0 else -1
-			velocity.x = wall_jump_velocity.x * wall_direction
-			velocity.y = wall_jump_velocity.y
-			wall_jump_timer = wall_jump_time
-			is_wall_jumping = true
-			is_wall_sliding = false
-			current_jumps = 1 # 蹬墙跳后重置为1次跳跃
-			facing_direction = wall_direction
-			if animated_sprite:
-				animated_sprite.flip_h = wall_direction < 0
-				animated_sprite.play("jump")
-
-func handle_wall_mechanics(is_on_wall_any: bool, is_on_wall_left: bool, is_on_wall_right: bool):
-	"""处理爬墙机制"""
-	var direction = Input.get_axis("left", "right")
+			play_anim("jump")
 	
-	# 判断是否应该进入墙滑状态
-	if not is_on_floor() and is_on_wall_any and wall_jump_timer <= 0:
-		var should_wall_slide = false
-		
-		# 检查玩家是否在向墙的方向移动
-		if is_on_wall_left and direction < 0:
-			should_wall_slide = true
-		elif is_on_wall_right and direction > 0:
-			should_wall_slide = true
-		
-		# 只有在下降时才能爬墙
-		if should_wall_slide and velocity.y > 0:
-			is_wall_sliding = true
-		else:
-			is_wall_sliding = false
-	else:
-		is_wall_sliding = false
-	
-	# 结束蹬墙跳状态
-	if wall_jump_timer <= 0:
-		is_wall_jumping = false
-
 func handle_movement():
 	"""处理水平移动"""
 	var direction = Input.get_axis("left", "right")
 	
-	# 在蹬墙跳期间限制水平控制
+	# 墙跳期间限制玩家控制
 	if is_wall_jumping and wall_jump_timer > 0:
-		# 蹬墙跳期间减少水平控制
-		direction *= 0.3
+		# 墙跳期间减少玩家的水平控制力
+		if direction != 0:
+			velocity.x = move_toward(velocity.x, direction * speed, speed * 0.05)
+		return
 	
+	# 正常移动
 	if direction != 0:
-		velocity.x = direction * speed
+		# 应用移动速度
+		velocity.x = move_toward(velocity.x, direction * speed, speed * 0.2)
 		
-		# 只有在不是蹬墙跳时才更新面向
-		if not is_wall_jumping:
+		# 更新面向方向
+		if not is_wall_sliding:
 			facing_direction = direction
 		
 		# 翻转精灵
-		if animated_sprite and not is_wall_jumping:
-			animated_sprite.flip_h = direction < 0
-			
+		if animated_sprite:
+			animated_sprite.flip_h = (facing_direction < 0)
+		
 		# 播放走路动画（如果在地面且不在挖掘）
-		if is_on_floor() and not is_digging and not is_wall_sliding:
+		if is_on_floor() and not is_digging:
 			if animated_sprite and animated_sprite.animation != "Walk":
 				animated_sprite.play("Walk")
 	else:
-		# 在蹬墙跳期间保持一些动量
-		if is_wall_jumping and wall_jump_timer > 0:
-			velocity.x = move_toward(velocity.x, 0, speed * 0.5)
+		# 没有输入时减速
+		if is_wall_sliding:
+			# 贴墙时保持少量水平速度
+			velocity.x = move_toward(velocity.x, wall_direction * 50, speed * 0.1)
 		else:
-			velocity.x = move_toward(velocity.x, 0, speed)
+			velocity.x = move_toward(velocity.x, 0, speed * 0.1)
 		
 		# 播放空闲动画（如果在地面且不在挖掘和爬墙）
 		if is_on_floor() and not is_digging and not is_wall_sliding:
@@ -198,92 +174,135 @@ func was_on_floor() -> bool:
 	"""检查上一帧是否在地面（简化实现）"""
 	return coyote_timer > 0
 
+func detect_wall():
+	"""检测墙壁并设置墙滑状态"""
+	# 重置墙壁状态
+	wall_direction = 0
+	var was_wall_sliding = is_wall_sliding
+	is_wall_sliding = false
+	
+	# 只有在空中时才能贴墙
+	if is_on_floor():
+		return
+	
+	# 检测左墙
+	if is_on_wall_only() and velocity.y > 0:
+		var direction = Input.get_axis("left", "right")
+		
+		# 检查玩家是否在向墙的方向移动或按住方向键
+		if direction < 0 and check_wall_collision(-1):
+			# 左墙
+			wall_direction = -1
+			is_wall_sliding = true
+		elif direction > 0 and check_wall_collision(1):
+			# 右墙
+			wall_direction = 1
+			is_wall_sliding = true
+	
+	# 调试输出
+	if is_wall_sliding and not was_wall_sliding:
+		print("开始贴墙滑行，墙壁方向：", wall_direction)
+	elif not is_wall_sliding and was_wall_sliding:
+		print("结束贴墙滑行")
+
+func check_wall_collision(direction: int) -> bool:
+	"""检查指定方向是否有墙壁碰撞"""
+	# 使用射线检测或形状查询来检测墙壁
+	var space_state = get_world_2d().direct_space_state
+	var query = PhysicsRayQueryParameters2D.create(
+		global_position,
+		global_position + Vector2(direction * 20, 0)
+	)
+	query.exclude = [self]
+	
+	var result = space_state.intersect_ray(query)
+	return result != null
+
 func handle_digging(delta):
 	# 更新挖掘计时器
 	if dig_timer > 0:
 		dig_timer -= delta
-	
-	# 检测挖掘输入 - 只有J键 + 方向键才能挖掘
-	if Input.is_action_pressed("dig") and dig_timer <= 0: # J键挖掘
-		# 获取方向输入
+		
+	# 检测挖掘输入
+	if Input.is_action_pressed("dig") and dig_timer <= 0:
 		var dig_direction = Vector2.ZERO
-		if Input.is_action_pressed("left"):
-			dig_direction.x = -1
-		elif Input.is_action_pressed("right"):
-			dig_direction.x = 1
 		
+		# 检测方向键输入，只允许4个基本方向挖掘
 		if Input.is_action_pressed("up"):
-			dig_direction.y = -1
+			dig_direction = Vector2(0, -1)
 		elif Input.is_action_pressed("down"):
-			dig_direction.y = 1
-		
-		# 只有在有方向输入时才能挖掘
-		if dig_direction != Vector2.ZERO:
-			perform_directional_dig(dig_direction)
-			dig_timer = dig_cooldown
-			
-			# 播放攻击动画
-			if animated_sprite and not is_digging:
-				is_digging = true
-				animated_sprite.play("Dig")
-				# 根据挖掘方向翻转精灵
-				if dig_direction.x != 0:
-					animated_sprite.flip_h = dig_direction.x < 0
-				# 创建一个计时器来结束挖掘动画
-				var timer = get_tree().create_timer(0.5)
-				timer.timeout.connect(_on_dig_animation_finished)
+			dig_direction = Vector2(0, 1)
+		elif Input.is_action_pressed("left"):
+			dig_direction = Vector2(-1, 0)
+		elif Input.is_action_pressed("right"):
+			dig_direction = Vector2(1, 0)
 		else:
-			# 如果只按J键没有方向键，给出提示
-			print("需要按住方向键来指定挖掘方向！")
-	
-	
-func perform_directional_dig(direction: Vector2):
-	# 对角线挖掘时，调整距离以保持一致的挖掘范围
-	if direction.x != 0 and direction.y != 0:
-		direction = direction.normalized()
-	
-	# 计算挖掘位置
-	var dig_position = global_position + direction * dig_range
-	attempt_dig(dig_position)
-	
-	# 打印挖掘方向的调试信息
+			# 没有方向键时，根据玩家朝向挖掘
+			dig_direction = Vector2(facing_direction, 0)
+		
+		# 执行挖掘
+		perform_directional_dig(dig_direction)
+		dig_timer = dig_cooldown
+		
+		# 播放攻击动画
+		if animated_sprite and not is_digging:
+			is_digging = true
+			play_anim("Dig")
+			if dig_direction.x != 0:
+				animated_sprite.flip_h = dig_direction.x < 0
+			var timer = get_tree().create_timer(0.5)
+			timer.timeout.connect(_on_dig_animation_finished)
+		
+		# 打印挖掘方向的调试信息
+		var direction_name = get_direction_name(dig_direction)
+		print(direction_name, "挖掘！")
+
+func get_direction_name(direction: Vector2) -> String:
+	"""获取方向名称用于调试"""
 	var direction_name = ""
 	if direction.y < 0:
 		direction_name = "向上"
 	elif direction.y > 0:
 		direction_name = "向下"
+	
 	if direction.x < 0:
 		direction_name += "向左"
 	elif direction.x > 0:
 		direction_name += "向右"
-	print(direction_name, "挖掘！")
+	
+	if direction_name == "":
+		direction_name = "未知方向"
+	
+	return direction_name
+
+func perform_directional_dig(direction: Vector2):
+	# tile_size = dig_range
+	var tile_size = dig_range
+	var player_grid = (global_position / tile_size).floor()
+	var target_grid = player_grid + direction
+	var dig_position = (target_grid + Vector2(0.5, 0.5)) * tile_size
+	if not try_dig_nearby(dig_position):
+		print("无法在此方向及附近挖掘")
 
 func perform_forward_dig():
 	# 向前挖掘
 	var dig_position = global_position + Vector2(facing_direction * dig_range, 0)
-	attempt_dig(dig_position)
+	if not try_dig_nearby(dig_position):
+		print("无法在前方及附近挖掘")
 
 func attempt_dig(world_position):
-	# 尝试在指定位置挖掘
-	var mine_scene = get_parent()
-	if mine_scene and mine_scene.has_method("dig_at_position"):
-		var success = mine_scene.dig_at_position(world_position)
-		if success:
-			# 挖掘成功的视觉/音效反馈
-			print("挖掘成功！")
-		else:
-			print("无法挖掘此位置")
-	else:
-		print("找不到MineScene或dig_at_position方法")
+	# 兼容旧接口，直接用新工具函数
+	if not try_dig_nearby(world_position):
+		print("无法在此处及附近挖掘")
 
 func _on_dig_animation_finished():
 	# 挖掘动画结束
 	is_digging = false
 	if is_on_floor():
 		if velocity.x != 0:
-			animated_sprite.play("Walk")
+			play_anim("Walk")
 		else:
-			animated_sprite.play("Idle")
+			play_anim("Idle")
 
 func take_damage(amount):
 	# 受伤
@@ -293,21 +312,21 @@ func take_damage(amount):
 	
 	# 播放受伤动画
 	if animated_sprite:
-		animated_sprite.play("Hurt")
+		play_anim("Hurt")
 		animated_sprite.animation_finished.connect(_on_hurt_animation_finished, CONNECT_ONE_SHOT)
 
 func _on_hurt_animation_finished():
 	# 受伤动画结束，返回正常状态
 	if is_on_floor():
 		if velocity.x != 0:
-			animated_sprite.play("Walk")
+			play_anim("Walk")
 		else:
-			animated_sprite.play("Idle")
+			play_anim("Idle")
 
 func die():
 	# 死亡
 	if animated_sprite:
-		animated_sprite.play("Dying")
+		play_anim("Dying")
 		# 禁用控制
 		set_physics_process(false)
 
@@ -326,38 +345,65 @@ func place_torch():
 	if not game_manager:
 		print("错误: 找不到GameManager")
 		return
-		
 	print("检查火把数量...")
 	var torch_count = game_manager.get_item_count("torch")
 	print("火把数量:", torch_count)
-	
 	if game_manager.has_item("torch"):
 		print("有火把可以放置")
 		# 获取放置位置（就在玩家当前位置）
 		var place_position = global_position
 		print("尝试在位置放置:", place_position)
-		
 		# 获取矿场引用并尝试放置火把
-		var mine_scene = get_parent()
-		print("父场景:", mine_scene.name if mine_scene else "无")
-		
-		if mine_scene and mine_scene.has_method("place_torch"):
-			print("尝试调用place_torch方法")
-			# 尝试放置火把，如果失败，尝试在玩家附近寻找有效位置
-			if mine_scene.place_torch(place_position):
-				# 成功放置，消耗一个火把
-				game_manager.remove_item("torch", 1)
-				print("放置了一个火把！")
-			else:
-				# 尝试在玩家脚下放置
-				var feet_position = global_position + Vector2(0, 50)
-				print("尝试在脚下位置放置:", feet_position)
-				if mine_scene.place_torch(feet_position):
-					game_manager.remove_item("torch", 1)
-					print("放置了一个火把在脚下!")
-				else:
-					print("无法在此处及附近放置火把")
+		if try_place_torch_nearby(place_position):
+			game_manager.remove_item("torch", 1)
+			print("放置了一个火把！")
 		else:
-			print("找不到放置火把功能，父场景没有place_torch方法")
+			print("无法在此处及附近放置火把")
 	else:
 		print("没有火把可以放置!")
+
+# 新增：动画切换统一方法
+func play_anim(anim_name: String):
+	if animated_sprite and animated_sprite.animation != anim_name:
+		animated_sprite.play(anim_name)
+
+# 新增：统一输入处理
+func handle_input(delta):
+	if Input.is_action_just_pressed("jump"):
+		handle_jumping()
+	if Input.is_action_pressed("dig"):
+		handle_digging(delta)
+	if Input.is_action_just_pressed("place_torch"):
+		handle_torch_placement()
+
+# 工具函数：生成周围8格偏移
+func get_surrounding_offsets() -> Array:
+	return [
+		Vector2(0, 0), Vector2(1, 0), Vector2(-1, 0),
+		Vector2(0, 1), Vector2(0, -1),
+		Vector2(1, 1), Vector2(-1, 1),
+		Vector2(1, -1), Vector2(-1, -1)
+	]
+
+# 工具函数：尝试在当前位置及周围8格执行操作
+func try_action_nearby(base_pos: Vector2, offsets: Array, func_name: String) -> bool:
+	for offset in offsets:
+		if call(func_name, base_pos + offset):
+			return true
+	return false
+
+# 挖掘：尝试当前位置及周围8格
+func try_dig_nearby(world_position: Vector2) -> bool:
+	for offset in get_surrounding_offsets():
+		var mine_scene = get_parent()
+		if mine_scene and mine_scene.has_method("dig_at_position") and mine_scene.dig_at_position(world_position + offset):
+			return true
+	return false
+
+# 火把放置：尝试当前位置及周围8格
+func try_place_torch_nearby(world_position: Vector2) -> bool:
+	for offset in get_surrounding_offsets():
+		var mine_scene = get_parent()
+		if mine_scene and mine_scene.has_method("place_torch") and mine_scene.place_torch(world_position + offset):
+			return true
+	return false

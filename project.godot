@@ -76,3 +76,4 @@ place_torch={
 [physics]
 
 3d/default_gravity=1000.0
+2d/default_gravity=1200.0

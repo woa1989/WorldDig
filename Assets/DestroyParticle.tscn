@@ -1,0 +1,50 @@
+[gd_scene load_steps=9 format=3 uid="uid://ckqmx5yqvd6dl"]
+
+[ext_resource type="Script" uid="uid://v5pac7tdbx7b" path="res://Assets/DestroyParticle.gd" id="1_t5hkv"]
+
+[sub_resource type="Curve" id="Curve_fikcl"]
+_limits = [-360.0, 360.0, 0.0, 1.0]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.967791, -89.2147), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_fikcl"]
+curve = SubResource("Curve_fikcl")
+
+[sub_resource type="Gradient" id="Gradient_0hhvi"]
+offsets = PackedFloat32Array(0, 0.996656, 1)
+colors = PackedColorArray(0.796078, 0.556863, 0.372549, 1, 1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_wkxxp"]
+gradient = SubResource("Gradient_0hhvi")
+
+[sub_resource type="Curve" id="Curve_nepgh"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.99999, 0.275537), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_w3via"]
+curve = SubResource("Curve_nepgh")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_fikcl"]
+particle_flag_disable_z = true
+angle_curve = SubResource("CurveTexture_fikcl")
+spread = 180.0
+initial_velocity_min = 109.53
+initial_velocity_max = 129.53
+gravity = Vector3(0, 100, 0)
+damping_min = 50.0
+damping_max = 50.0
+scale_min = 10.0
+scale_max = 15.0
+scale_curve = SubResource("CurveTexture_w3via")
+color_ramp = SubResource("GradientTexture1D_wkxxp")
+
+[node name="DestroyParticle" type="Node2D"]
+z_index = 10
+script = ExtResource("1_t5hkv")
+
+[node name="CPUParticles2D" type="GPUParticles2D" parent="."]
+amount = 20
+lifetime = 0.5
+explosiveness = 1.0
+fixed_fps = 0
+process_material = SubResource("ParticleProcessMaterial_fikcl")
