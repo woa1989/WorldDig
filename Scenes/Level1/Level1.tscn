@@ -1,0 +1,59 @@
+[gd_scene load_steps=9 format=3 uid="uid://dohq2de4550ke"]
+
+[ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="1_gmjs3"]
+[ext_resource type="Texture2D" uid="uid://6m3bwl885e0p" path="res://Assets/mapPack_tilesheet_2X.png" id="2_yq8de"]
+[ext_resource type="Script" uid="uid://cs4yud4jw5666" path="res://Scenes/Level1/Level1.gd" id="3_level1_script"]
+[ext_resource type="PackedScene" uid="uid://cp03xgdlj7yad" path="res://Player/Player.tscn" id="4_teab5"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_yq8de"]
+texture = ExtResource("1_gmjs3")
+texture_region_size = Vector2i(128, 128)
+19:0/0 = 0
+19:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+
+[sub_resource type="TileSet" id="TileSet_vxb1s"]
+tile_size = Vector2i(128, 128)
+physics_layer_0/collision_layer = 1
+terrain_set_0/mode = 0
+sources/0 = SubResource("TileSetAtlasSource_yq8de")
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_vxb1s"]
+texture = ExtResource("2_yq8de")
+texture_region_size = Vector2i(128, 128)
+11:4/0 = 0
+10:4/0 = 0
+12:4/0 = 0
+12:5/0 = 0
+12:6/0 = 0
+11:6/0 = 0
+10:6/0 = 0
+10:5/0 = 0
+11:5/0 = 0
+10:7/0 = 0
+11:7/0 = 0
+12:7/0 = 0
+13:4/0 = 0
+14:4/0 = 0
+14:5/0 = 0
+13:5/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_teab5"]
+tile_size = Vector2i(128, 128)
+physics_layer_0/collision_layer = 1
+terrain_set_0/mode = 0
+terrain_set_0/terrain_0/name = "Terrain 0"
+terrain_set_0/terrain_0/color = Color(0.5, 0.34375, 0.25, 1)
+sources/0 = SubResource("TileSetAtlasSource_vxb1s")
+
+[node name="Level1" type="Node2D"]
+script = ExtResource("3_level1_script")
+
+[node name="Map" type="Node2D" parent="."]
+
+[node name="Maze" type="TileMapLayer" parent="Map"]
+tile_set = SubResource("TileSet_vxb1s")
+
+[node name="Dirt" type="TileMapLayer" parent="Map"]
+tile_set = SubResource("TileSet_teab5")
+
+[node name="Player" parent="." instance=ExtResource("4_teab5")]
