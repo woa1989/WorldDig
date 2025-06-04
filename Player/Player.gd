@@ -89,6 +89,9 @@ func _physics_process(delta):
 	handle_movement()
 	
 	move_and_slide()
+	
+	# 动画处理 - 在move_and_slide()之后检查实际移动速度
+	update_animations()
 
 func handle_jumping():
 	"""处理跳跃逻辑"""
@@ -140,11 +143,6 @@ func handle_movement():
 		# 翻转精灵
 		if animated_sprite:
 			animated_sprite.flip_h = (facing_direction < 0)
-		
-		# 播放走路动画（如果在地面且不在挖掘）
-		if is_on_floor() and not is_digging:
-			if animated_sprite and animated_sprite.animation != "Walk":
-				animated_sprite.play("Walk")
 	else:
 		# 没有输入时减速
 		if is_wall_sliding:
@@ -152,9 +150,16 @@ func handle_movement():
 			velocity.x = move_toward(velocity.x, wall_direction * 50, speed * 0.1)
 		else:
 			velocity.x = move_toward(velocity.x, 0, speed * 0.1)
-		
-		# 播放空闲动画（如果在地面且不在挖掘和爬墙）
-		if is_on_floor() and not is_digging and not is_wall_sliding:
+
+func update_animations():
+	"""更新玩家动画 - 基于实际移动速度"""
+	# 动画处理 - 基于实际移动速度而不是输入
+	if is_on_floor() and not is_digging and not is_wall_sliding:
+		# 检查玩家是否真的在移动（速度阈值）
+		if abs(velocity.x) > 50.0: # 如果水平速度大于阈值，播放走路动画
+			if animated_sprite and animated_sprite.animation != "Walk":
+				animated_sprite.play("Walk")
+		else: # 如果基本静止，播放空闲动画
 			if animated_sprite and animated_sprite.animation != "Idle":
 				animated_sprite.play("Idle")
 	
