@@ -48,6 +48,13 @@ func _ready():
 	
 	# 创建火把照明
 	create_torch_lights()
+	
+	# 启动玩家深度监控定时器
+	var timer = Timer.new()
+	timer.wait_time = 1.0 # 每秒检查一次
+	timer.timeout.connect(_check_player_depth)
+	timer.autostart = true
+	add_child(timer)
 
 func setup_lighting():
 	"""设置基础照明系统"""
@@ -163,12 +170,23 @@ func handle_torch_density_shortcut(keycode):
 			if dirt_layer and dirt_layer.has_method("clear_all_torches"):
 				dirt_layer.clear_all_torches()
 			print("清除了所有火把")
+		KEY_T:
+			# 显示地形状态
+			if dirt_layer and dirt_layer.has_method("print_terrain_status"):
+				dirt_layer.print_terrain_status()
+		KEY_G:
+			# 手动触发新层生成
+			if dirt_layer and dirt_layer.has_method("generate_new_layers"):
+				dirt_layer.generate_new_layers()
+				print("手动生成了新的地形层")
 		KEY_H:
 			print("=== 火把密度控制帮助 ===")
 			print("数字键1 - 低密度火把 (20%密度, 8格距离)")
 			print("数字键2 - 中等密度火把 (50%密度, 5格距离)")
 			print("数字键3 - 高密度火把 (80%密度, 3格距离)")
 			print("数字键0 - 清除所有火把")
+			print("T键 - 显示地形状态")
+			print("G键 - 手动生成新层")
 			print("H键 - 显示此帮助信息")
 
 func set_torch_distance(distance: int):
@@ -255,12 +273,12 @@ func try_place_torch_at(grid_pos: Vector2i) -> bool:
 	# 检查torch_tile是否有效
 	print("MineScene: torch_tile =", dirt_layer.torch_tile)
 	
-	# 放置火把 - 确保使用正确的torch_tile
-	if dirt_layer.get("torch_tile") != null:
-		dirt_layer.set_cell(grid_pos, 1, dirt_layer.torch_tile)
+	# 放置火把 - 火把应该放置在ore层，与地图生成的火把一致
+	if ore_layer:
+		ore_layer.set_cell(grid_pos, 1, dirt_layer.torch_tile)
 	else:
-		# 如果dirt_layer没有torch_tile属性，使用默认值
-		dirt_layer.set_cell(grid_pos, 1, Vector2i(9, 0))
+		print("MineScene: 错误 - ore_layer不存在")
+		return false
 	
 	dirt_layer.terrain_data[Vector2(grid_pos.x, grid_pos.y)]["has_torch"] = true
 	
@@ -279,3 +297,15 @@ func set_torch_density(density: float):
 	if dirt_layer and dirt_layer.has_method("set_torch_density"):
 		dirt_layer.set_torch_density(density)
 		print("设置火把密度为: ", density)
+
+func _check_player_depth():
+	"""检查玩家深度并在需要时生成新地形"""
+	if not player or not dirt_layer:
+		return
+	
+	# 获取玩家当前深度
+	var player_depth = dirt_layer.get_player_depth_from_position(player.global_position)
+	
+	# 检查是否需要生成新的地形层
+	if dirt_layer.has_method("check_and_generate_new_layers"):
+		dirt_layer.check_and_generate_new_layers(player_depth)

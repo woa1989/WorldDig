@@ -20,8 +20,11 @@ var destroy_particle_scene = preload("res://Assets/DestroyParticle.tscn") # 销�
 # 地图参数
 var tile_size = 128
 var map_width = 100
-var map_height = 100
+var initial_map_height = 80 # 初始生成高度
 var surface_level = 10
+var current_max_depth = 80 # 当前已生成的最大深度
+var generation_chunk_size = 80 # 每次生成的层数
+var trigger_distance = 30 # 触发生成新层的距离（当玩家距离底部这么近时生成）
 
 var torch_tile = Vector2i(20, 0) # 火把瓦片 - 使用source_id = 1的20:0/0
 
@@ -61,6 +64,9 @@ var tile_rewards = {
 func _ready():
 	print("TerrainGenerator _ready 开始")
 	
+	# 设置初始最大深度
+	current_max_depth = initial_map_height
+	
 	# 获取矿物层引用
 	ore_layer = get_parent().get_node("Ore")
 	
@@ -87,7 +93,7 @@ func _ready():
 func generate_terrain():
 	"""生成完整的地形"""
 	print("开始生成地形...")
-	print("地图大小: ", map_width, "x", map_height, " 表面深度: ", surface_level)
+	print("地图大小: ", map_width, "x", current_max_depth, " 表面深度: ", surface_level)
 	
 	# 首先清空现有地形
 	clear()
@@ -101,19 +107,7 @@ func generate_terrain():
 	var dirt_cells = [] # 收集所有泥土瓦片位置
 	
 	# 生成表面到地下的地形
-	for x in range(map_width):
-		for y in range(surface_level, map_height):
-			var world_pos = Vector2(x, y)
-			var is_near_spawn = is_position_near_spawn(world_pos)
-			
-			# 如果靠近生成点，创建空洞
-			if is_near_spawn:
-				continue
-			
-			# 根据深度决定生成什么
-			generate_tile_at_position(world_pos)
-			dirt_cells.append(Vector2i(int(x), int(y)))
-			tiles_generated += 1
+	generate_layer_range(surface_level, current_max_depth)
 	
 	# 批量设置所有泥土瓦片的地形连接
 	if dirt_cells.size() > 0:
@@ -136,8 +130,24 @@ func generate_background():
 	
 	# 生成背景瓦片，从surface_level开始，与dirt层保持一致
 	for x in range(map_width):
-		for y in range(surface_level, map_height):
+		for y in range(surface_level, current_max_depth):
 			background_layer.set_cell(Vector2i(x, y), 1, background_tile_id)
+
+func generate_background_for_range(start_y: int, end_y: int):
+	"""为指定深度范围生成背景瓦片"""
+	var background_layer = get_parent().get_node("BackgroundTiles")
+	if not background_layer:
+		return
+	
+	# 使用不同的瓦片ID作为背景，比如使用较暗的土壤瓦片
+	var background_tile_id = Vector2i(18, 0)
+	
+	# 生成背景瓦片
+	for x in range(map_width):
+		for y in range(start_y, end_y):
+			background_layer.set_cell(Vector2i(x, y), 1, background_tile_id)
+	
+	print("为深度范围 ", start_y, "-", end_y, " 生成了背景瓦片")
 
 func is_position_near_spawn(pos: Vector2) -> bool:
 	"""检查位置是否靠近生成点，用于创建初始空洞"""
@@ -187,13 +197,13 @@ func generate_tile_at_position(pos: Vector2):
 func generate_torches():
 	"""在dirt层随机生成火把 - 根据深度递减，带距离控制"""
 	var torch_count = 0
-	var max_torches = int(map_width * map_height * torch_chance * torch_density_factor / 10)
+	var max_torches = int(map_width * current_max_depth * torch_chance * torch_density_factor / 10)
 	var placed_torches = [] # 记录已放置火把的位置
 	
 	print("火把生成开始，最大数量限制: ", max_torches)
 	
 	for x in range(map_width):
-		for y in range(surface_level, map_height):
+		for y in range(surface_level, current_max_depth):
 			var pos = Vector2(x, y)
 			
 			# 跳过生成点附近
@@ -322,7 +332,7 @@ func dig_at_position(world_pos: Vector2) -> bool:
 func dig_tile(grid_pos: Vector2) -> bool:
 	"""挖掘指定网格位置的瓦片"""
 	# 边界检查：防止挖穿地图边界
-	if grid_pos.x <= 0 or grid_pos.x >= map_width - 1 or grid_pos.y <= surface_level or grid_pos.y >= map_height - 1:
+	if grid_pos.x <= 0 or grid_pos.x >= map_width - 1 or grid_pos.y <= surface_level:
 		print("无法挖掘地图边界!")
 		return false
 	
@@ -507,3 +517,138 @@ func show_destroy_particles(grid_pos: Vector2, tile_type: String = "stone"):
 	
 	# 根据瓦片类型设置粒子颜色
 	destroy_particles.setup_particle_color(tile_type)
+
+# 无限地形生成相关函数
+func generate_layer_range(start_y: int, end_y: int):
+	"""生成指定深度范围的地形层"""
+	print("生成地形层范围: ", start_y, " 到 ", end_y)
+	
+	var tiles_generated = 0
+	var dirt_cells = [] # 收集所有泥土瓦片位置
+	
+	# 生成地形
+	for x in range(map_width):
+		for y in range(start_y, end_y):
+			var world_pos = Vector2(x, y)
+			var is_near_spawn = is_position_near_spawn(world_pos)
+			
+			# 如果靠近生成点，创建空洞
+			if is_near_spawn:
+				continue
+			
+			# 根据深度决定生成什么
+			generate_tile_at_position(world_pos)
+			dirt_cells.append(Vector2i(int(x), int(y)))
+			tiles_generated += 1
+	
+	# 批量设置所有泥土瓦片的地形连接
+	if dirt_cells.size() > 0:
+		print("批量设置 ", dirt_cells.size(), " 个泥土瓦片的地形连接")
+		set_cells_terrain_connect(dirt_cells, TERRAIN_SET, TERRAIN_DIRT, false)
+	
+	print("生成了 ", tiles_generated, " 个瓦片")
+	
+	# 为新生成的区域生成火把
+	generate_torches_in_range(start_y, end_y)
+
+func generate_torches_in_range(start_y: int, end_y: int):
+	"""在指定深度范围内生成火把"""
+	var torch_count = 0
+	var max_torches = int(map_width * (end_y - start_y) * torch_chance * torch_density_factor / 10)
+	var placed_torches = [] # 记录已放置火把的位置
+	
+	print("在深度范围 ", start_y, "-", end_y, " 生成火把，最大数量: ", max_torches)
+	
+	for x in range(map_width):
+		for y in range(start_y, end_y):
+			var pos = Vector2(x, y)
+			
+			# 跳过生成点附近
+			if is_position_near_spawn(pos):
+				continue
+			
+			# 跳过没有地形数据的位置
+			if not terrain_data.has(pos):
+				continue
+			
+			# 检查与已有火把的距离
+			if not is_valid_torch_position(pos, placed_torches, min_torch_distance):
+				continue
+			
+			# 计算深度相关的火把概率
+			var depth = y - surface_level
+			var depth_factor = calculate_torch_probability_by_depth(depth)
+			var adjusted_torch_chance = torch_chance * depth_factor * torch_density_factor
+			
+			# 随机生成火把，概率随深度递减
+			if randf() < adjusted_torch_chance and torch_count < max_torches:
+				# 放置火把瓦片在ore层
+				place_ore_tile(pos, torch_tile, 1)
+				
+				# 记录这个位置有火把
+				terrain_data[pos]["has_torch"] = true
+				placed_torches.append(pos)
+				torch_count += 1
+				
+				# 发出信号通知创建光源
+				torch_created.emit(pos)
+	
+	print("在深度范围 ", start_y, "-", end_y, " 生成了 ", torch_count, " 个火把")
+
+func check_and_generate_new_layers(player_depth: int):
+	"""检查玩家深度并在需要时生成新的地形层"""
+	var layers_from_bottom = current_max_depth - player_depth
+	
+	if layers_from_bottom <= trigger_distance:
+		print("玩家接近地形底部，当前深度: ", player_depth, ", 底部还有: ", layers_from_bottom, " 层")
+		generate_new_layers()
+
+func generate_new_layers():
+	"""生成新的地形层"""
+	var new_start = current_max_depth
+	var new_end = current_max_depth + generation_chunk_size
+	
+	print("生成新地形层: 从 ", new_start, " 到 ", new_end)
+	
+	# 生成新的地形层
+	generate_layer_range(new_start, new_end)
+	
+	# 生成新的背景层
+	generate_background_for_range(new_start, new_end)
+	
+	# 更新最大深度
+	current_max_depth = new_end
+	
+	print("地形已扩展到深度: ", current_max_depth)
+
+func get_current_max_depth() -> int:
+	"""获取当前最大深度"""
+	return current_max_depth
+
+func get_player_depth_from_position(world_pos: Vector2) -> int:
+	"""从世界坐标获取玩家的深度层级"""
+	var grid_pos = local_to_map(to_local(world_pos))
+	return int(grid_pos.y)
+
+# 调试和状态显示函数
+func get_terrain_status() -> Dictionary:
+	"""获取当前地形状态信息"""
+	return {
+		"current_max_depth": current_max_depth,
+		"surface_level": surface_level,
+		"generated_layers": current_max_depth - surface_level,
+		"generation_chunk_size": generation_chunk_size,
+		"trigger_distance": trigger_distance,
+		"total_tiles": terrain_data.size()
+	}
+
+func print_terrain_status():
+	"""打印当前地形状态"""
+	var status = get_terrain_status()
+	print("=== 地形状态 ===")
+	print("当前最大深度: ", status.current_max_depth)
+	print("表面深度: ", status.surface_level)
+	print("已生成层数: ", status.generated_layers)
+	print("每次生成层数: ", status.generation_chunk_size)
+	print("触发距离: ", status.trigger_distance)
+	print("总瓦片数: ", status.total_tiles)

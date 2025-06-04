@@ -88,12 +88,6 @@ func _physics_process(delta):
 	# 移动处理
 	handle_movement()
 	
-	# 挖掘
-	handle_digging(delta)
-	
-	# 放置火把
-	handle_torch_placement()
-	
 	move_and_slide()
 
 func handle_jumping():
@@ -102,7 +96,7 @@ func handle_jumping():
 		# 墙跳优先级最高
 		if is_wall_sliding and wall_direction != 0:
 			# 墙跳：向墙的反方向跳跃
-			velocity.x = -wall_direction * wall_jump_velocity.x
+			velocity.x = - wall_direction * wall_jump_velocity.x
 			velocity.y = wall_jump_velocity.y
 			is_wall_jumping = true
 			is_wall_sliding = false
@@ -369,8 +363,6 @@ func play_anim(anim_name: String):
 
 # 新增：统一输入处理
 func handle_input(delta):
-	if Input.is_action_just_pressed("jump"):
-		handle_jumping()
 	if Input.is_action_pressed("dig"):
 		handle_digging(delta)
 	if Input.is_action_just_pressed("place_torch"):
