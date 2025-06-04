@@ -217,44 +217,43 @@ func check_wall_collision(direction: int) -> bool:
 	var result = space_state.intersect_ray(query)
 	return result != null
 
-func handle_digging(delta):
-	# 更新挖掘计时器
+func handle_digging(_delta):
+	# 检查冷却时间
 	if dig_timer > 0:
-		dig_timer -= delta
+		print("挖掘冷却中，剩余时间：", dig_timer)
+		return
 		
-	# 检测挖掘输入
-	if Input.is_action_pressed("dig") and dig_timer <= 0:
-		var dig_direction = Vector2.ZERO
-		
-		# 检测方向键输入，只允许4个基本方向挖掘
-		if Input.is_action_pressed("up"):
-			dig_direction = Vector2(0, -1)
-		elif Input.is_action_pressed("down"):
-			dig_direction = Vector2(0, 1)
-		elif Input.is_action_pressed("left"):
-			dig_direction = Vector2(-1, 0)
-		elif Input.is_action_pressed("right"):
-			dig_direction = Vector2(1, 0)
-		else:
-			# 没有方向键时，根据玩家朝向挖掘
-			dig_direction = Vector2(facing_direction, 0)
-		
-		# 执行挖掘
-		perform_directional_dig(dig_direction)
-		dig_timer = dig_cooldown
-		
-		# 播放攻击动画
-		if animated_sprite and not is_digging:
-			is_digging = true
-			play_anim("Dig")
-			if dig_direction.x != 0:
-				animated_sprite.flip_h = dig_direction.x < 0
-			var timer = get_tree().create_timer(0.5)
-			timer.timeout.connect(_on_dig_animation_finished)
-		
-		# 打印挖掘方向的调试信息
-		var direction_name = get_direction_name(dig_direction)
-		print(direction_name, "挖掘！")
+	var dig_direction = Vector2.ZERO
+	
+	# 检测方向键输入，只允许4个基本方向挖掘
+	if Input.is_action_pressed("up"):
+		dig_direction = Vector2(0, -1)
+	elif Input.is_action_pressed("down"):
+		dig_direction = Vector2(0, 1)
+	elif Input.is_action_pressed("left"):
+		dig_direction = Vector2(-1, 0)
+	elif Input.is_action_pressed("right"):
+		dig_direction = Vector2(1, 0)
+	else:
+		# 没有方向键时，根据玩家朝向挖掘
+		dig_direction = Vector2(facing_direction, 0)
+	
+	# 执行挖掘
+	perform_directional_dig(dig_direction)
+	dig_timer = dig_cooldown
+	
+	# 播放攻击动画
+	if animated_sprite and not is_digging:
+		is_digging = true
+		play_anim("Dig")
+		if dig_direction.x != 0:
+			animated_sprite.flip_h = dig_direction.x < 0
+		var timer = get_tree().create_timer(0.5)
+		timer.timeout.connect(_on_dig_animation_finished)
+	
+	# 打印挖掘方向的调试信息
+	var direction_name = get_direction_name(dig_direction)
+	print(direction_name, "挖掘！")
 
 func get_direction_name(direction: Vector2) -> String:
 	"""获取方向名称用于调试"""
@@ -368,8 +367,14 @@ func play_anim(anim_name: String):
 
 # 新增：统一输入处理
 func handle_input(delta):
-	if Input.is_action_pressed("dig"):
+	# 挖掘输入检查 - 只在按键刚按下时检查一次
+	if Input.is_action_just_pressed("dig"):
 		handle_digging(delta)
+	else:
+		# 更新挖掘计时器
+		if dig_timer > 0:
+			dig_timer -= delta
+	
 	if Input.is_action_just_pressed("place_torch"):
 		handle_torch_placement()
 
