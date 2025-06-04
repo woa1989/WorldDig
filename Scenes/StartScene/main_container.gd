@@ -8,7 +8,6 @@ func _ready() -> void:
 	QuitBtn.pressed.connect(_on_quit_btn_pressed)
 
 func _on_start_btn_pressed() -> void:
-	print("start")
 	get_tree().change_scene_to_file("res://Scenes/MineScene/MineScene.tscn")
 
 func _on_quit_btn_pressed() -> void:

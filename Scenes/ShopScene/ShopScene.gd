@@ -112,7 +112,6 @@ func upgrade_speed():
 	var cost = 75
 	if GameManager.spend_money(cost):
 		GameManager.movement_speed += 20
-		print("移动速度提升！")
 		return true
 	return false
 

@@ -68,7 +68,6 @@ func _input(event):
 func enter_building(building_id: String):
 	if building_scenes.has(building_id):
 		var scene_path = building_scenes[building_id]
-		print("进入 " + building_id)
 		var game_manager = get_node_or_null("/root/GameManager")
 		if game_manager:
 			game_manager.change_scene(scene_path)
@@ -91,7 +90,6 @@ func _on_shop_entered(body):
 		current_building = "shop"
 		if shop_hint:
 			shop_hint.visible = true
-		print("接近商店")
 
 func _on_shop_exited(body):
 	if body == player:
@@ -105,7 +103,6 @@ func _on_mine_entered(body):
 		current_building = "mine"
 		if mine_hint:
 			mine_hint.visible = true
-		print("接近矿井入口")
 
 func _on_mine_exited(body):
 	if body == player:

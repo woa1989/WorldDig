@@ -46,7 +46,6 @@ func add_item(item_name: String, quantity: int = 1) -> bool:
 		inventory[item_name] = quantity
 	
 	inventory_changed.emit()
-	print("获得", quantity, "个", item_name, "，总计:", inventory[item_name])
 	
 	# 某些物品有特殊处理
 	match item_name:
@@ -87,7 +86,6 @@ func sell_item(item_name: String, quantity: int = 1) -> bool:
 	var value = get_material_value(item_name) * quantity
 	if remove_item(item_name, quantity):
 		add_money(value)
-		print("出售", quantity, "个", item_name, "，获得", value, "金币")
 		return true
 	
 	return false
@@ -95,7 +93,6 @@ func sell_item(item_name: String, quantity: int = 1) -> bool:
 func add_money(amount):
 	player_money += amount
 	money_changed.emit(player_money)
-	print("获得 " + str(amount) + " 金币，总计: " + str(player_money))
 
 func spend_money(amount):
 	if player_money >= amount:
@@ -103,7 +100,6 @@ func spend_money(amount):
 		money_changed.emit(player_money)
 		return true
 	else:
-		print("金币不足！")
 		return false
 
 func get_money():
@@ -114,7 +110,6 @@ func upgrade_pickaxe():
 	if spend_money(cost):
 		pickaxe_level += 1
 		pickaxe_damage += 5
-		print("镐子升级到等级 " + str(pickaxe_level))
 		return true
 	return false
 
@@ -123,7 +118,6 @@ func upgrade_health():
 	if spend_money(cost):
 		player_max_health += 20
 		player_health = player_max_health
-		print("生命值上限提升到 " + str(player_max_health))
 		return true
 	return false
 
@@ -136,7 +130,6 @@ func damage_player(amount):
 		player_died()
 
 func player_died():
-	print("玩家死亡！")
 	# 重置到城镇
 	get_tree().change_scene_to_file("res://Scenes/TownScene/TownScene.tscn")
 
