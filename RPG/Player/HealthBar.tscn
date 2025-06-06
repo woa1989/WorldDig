@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://yam05o5ebvs5"]
+
+[node name="HealthBar" type="ProgressBar"]
+offset_left = -25.0
+offset_top = -40.0
+offset_right = 25.0
+offset_bottom = -35.0
+value = 100.0
+show_percentage = false
+
+[node name="Label" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = -15.0
+offset_right = 50.0
+offset_bottom = 8.0
+scale = Vector2(0.8, 0.8)
+text = "HP"

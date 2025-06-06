@@ -1,0 +1,95 @@
+[gd_scene load_steps=10 format=3 uid="uid://dtvbumcytvpss"]
+
+[ext_resource type="Texture2D" uid="uid://5d8vmafsp4gh" path="res://RPG/Enemy/bullet.webp" id="1_gjsra"]
+[ext_resource type="Script" uid="uid://cv3xaxmc8j0cx" path="res://RPG/Bullet/bullet.gd" id="1_m5653"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_m5653"]
+blend_mode = 1
+
+[sub_resource type="Gradient" id="Gradient_tds6w"]
+interpolation_mode = 2
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ak2i8"]
+gradient = SubResource("Gradient_tds6w")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0.01)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_gjsra"]
+radius = 7.07107
+
+[sub_resource type="Animation" id="Animation_m5653"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:self_modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_gjsra"]
+resource_name = "destory"
+length = 0.3
+tracks/0/type = "method"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.3),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"queue_free"
+}]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Sprite2D:self_modulate")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.3),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_tds6w"]
+_data = {
+&"RESET": SubResource("Animation_m5653"),
+&"destory": SubResource("Animation_gjsra")
+}
+
+[node name="Bullet" type="Area2D"]
+collision_mask = 2
+script = ExtResource("1_m5653")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(2, 2)
+texture = ExtResource("1_gjsra")
+
+[node name="Sprite2D" type="Sprite2D" parent="Sprite2D"]
+modulate = Color(0.501961, 1, 1, 0.25098)
+material = SubResource("CanvasItemMaterial_m5653")
+scale = Vector2(0.445312, 0.414062)
+texture = SubResource("GradientTexture2D_ak2i8")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_gjsra")
+
+[node name="Timer" type="Timer" parent="."]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_tds6w")
+}

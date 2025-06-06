@@ -1,0 +1,78 @@
+[gd_scene load_steps=8 format=4 uid="uid://3bfajiq1lvpl"]
+
+[ext_resource type="Texture2D" uid="uid://6m3bwl885e0p" path="res://Assets/mapPack_tilesheet_2X.png" id="1_oy6m2"]
+[ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="2_l7ram"]
+[ext_resource type="PackedScene" uid="uid://bdudmoef7p0e4" path="res://RPG/Player/Player.tscn" id="3_l7ram"]
+[ext_resource type="PackedScene" uid="uid://iigkdv2n7slv" path="res://RPG/Enemy/Enemy.tscn" id="4_87ail"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_87ail"]
+texture = ExtResource("1_oy6m2")
+texture_region_size = Vector2i(128, 128)
+5:3/0 = 0
+5:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:3/0 = 0
+6:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:3/0 = 0
+7:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:1/0 = 0
+6:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:2/0 = 0
+5:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:2/0 = 0
+6:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:2/0 = 0
+7:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:1/0 = 0
+5:1/0 = 0
+5:0/0 = 0
+6:0/0 = 0
+7:0/0 = 0
+4:2/0 = 0
+9:2/0 = 0
+9:3/0 = 0
+8:3/0 = 0
+8:2/0 = 0
+9:7/0 = 0
+14:6/0 = 0
+13:6/0 = 0
+13:7/0 = 0
+14:7/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_74g24"]
+texture = ExtResource("2_l7ram")
+texture_region_size = Vector2i(128, 128)
+8:0/0 = 0
+9:0/0 = 0
+10:0/0 = 0
+11:0/0 = 0
+12:0/0 = 0
+13:0/0 = 0
+14:0/0 = 0
+15:0/0 = 0
+21:0/0 = 0
+22:0/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_ui0le"]
+tile_size = Vector2i(128, 128)
+physics_layer_0/collision_layer = 16
+terrain_set_0/mode = 0
+sources/0 = SubResource("TileSetAtlasSource_87ail")
+sources/1 = SubResource("TileSetAtlasSource_74g24")
+
+[node name="Game" type="Node2D"]
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+tile_map_data = PackedByteArray("AAAAAPv/AAAGAAEAAAAAAPz/AAAGAAEAAAAAAP3/AAAGAAEAAAAAAP7/AAAGAAEAAAAAAP//AAAGAAEAAAAAAAAAAAAGAAEAAAAAAAEAAAAGAAEAAAAAAAIAAAAGAAEAAAAAAAMAAAAGAAEAAAAAAAQAAAAGAAEAAAAAAAUAAAAGAAEAAAAAAAYAAAAGAAEAAAAAAAcAAAAGAAEAAAABAAcAAAAGAAEAAAACAAcAAAAGAAEAAAADAAcAAAAGAAEAAAAEAAcAAAAGAAEAAAAFAAcAAAAGAAEAAAAGAAcAAAAGAAEAAAAHAAcAAAAGAAEAAAAIAAcAAAAGAAEAAAAJAAcAAAAGAAEAAAAKAAcAAAAGAAEAAAALAAcAAAAGAAEAAAAMAAcAAAAGAAEAAAANAAcAAAAGAAEAAAAOAAcAAAAGAAEAAAAPAAcAAAAGAAEAAAAQAAcAAAAGAAEAAAARAAcAAAAGAAEAAAASAAcAAAAGAAEAAAATAAcAAAAGAAEAAAAUAAcAAAAGAAEAAAAVAAcAAAAGAAEAAAAWAAcAAAAGAAEAAAAXAAcAAAAGAAEAAAAYAAcAAAAGAAEAAAAYAAYAAAAGAAEAAAAYAAUAAAAGAAEAAAAYAAQAAAAGAAEAAAAYAAMAAAAGAAEAAAAYAAIAAAAGAAEAAAAYAAEAAAAGAAEAAAAYAAAAAAAGAAEAAAAYAP//AAAGAAEAAAAYAP7/AAAGAAEAAAAYAP3/AAAGAAEAAAAYAPz/AAAGAAEAAAAYAPv/AAAGAAEAAAADAAQAAAAFAAIAAAAEAAQAAAAGAAIAAAAFAAQAAAAHAAIAAAAJAAEAAAAFAAIAAAAKAAEAAAAGAAIAAAALAAEAAAAHAAIAAAARAAAAAAAFAAIAAAATAAAAAAAHAAIAAAALAP3/AAAFAAIAAAAMAP3/AAAGAAIAAAANAP3/AAAHAAIAAAADAP3/AAAFAAIAAAAEAP3/AAAGAAIAAAAFAP3/AAAHAAIAAAASAAAAAAAGAAMAAAAMAAQAAAAFAAMAAAANAAQAAAAGAAMAAAAOAAQAAAAGAAMAAAAPAAQAAAAGAAMAAAAQAAQAAAAGAAMAAAARAAQAAAAGAAMAAAASAAQAAAAGAAMAAAATAAQAAAAHAAMAAAA=")
+tile_set = SubResource("TileSet_ui0le")
+
+[node name="Player" parent="." instance=ExtResource("3_l7ram")]
+position = Vector2(1098, 568)
+scale = Vector2(4, 4)
+
+[node name="Enemies" type="Node" parent="."]
+
+[node name="Enemy1" parent="Enemies" instance=ExtResource("4_87ail")]
+position = Vector2(2925, 800)
+
+[node name="Enemy2" parent="Enemies" instance=ExtResource("4_87ail")]
+position = Vector2(1699, 449)
