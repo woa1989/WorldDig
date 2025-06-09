@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://b8hkyw6nv7vlx"]
 
-[ext_resource type="Script" path="res://Scenes/MineScene/HealthBar.gd" id="1_0z8r4"]
+[ext_resource type="Script" uid="uid://c74iuaro73u4n" path="res://Scenes/MineScene/HealthBar.gd" id="1_0z8r4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1hq3x"]
 bg_color = Color(1, 0, 0, 1)

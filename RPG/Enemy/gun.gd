@@ -1,7 +1,7 @@
 extends Marker2D
 
 const BULLET_VELOCITY = 850.0
-const BULLET_RANGE = 500.0  # 子弹有效射程
+const BULLET_RANGE = 500.0 # 子弹有效射程
 const BULLET_SCEN = preload("res://RPG/Bullet/Bullet.tscn")
 
 @onready var sound_shoot: AudioStreamPlayer2D = $Shoot
@@ -41,4 +41,3 @@ func shoot(direction: float = 1.0) -> bool:
 func _on_bullet_timeout(bullet: Node) -> void:
 	if is_instance_valid(bullet):
 		bullet.queue_free()
-	

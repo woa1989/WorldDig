@@ -1,9 +1,15 @@
-[gd_scene load_steps=58 format=3 uid="uid://bdudmoef7p0e4"]
+[gd_scene load_steps=60 format=3 uid="uid://bdudmoef7p0e4"]
 
 [ext_resource type="Texture2D" uid="uid://ubf05ldjkbct" path="res://RPG/Player/player.png" id="1_itu05"]
+[ext_resource type="Shader" uid="uid://cac2jtnh384gx" path="res://RPG/Player/Blink.gdshader" id="2_w30tr"]
 [ext_resource type="Script" uid="uid://b8t4ldnq5sa3k" path="res://RPG/Player/camera_2d.gd" id="4_d1mpr"]
 [ext_resource type="PackedScene" uid="uid://yam05o5ebvs5" path="res://RPG/Player/HealthBar.tscn" id="health_bar"]
 [ext_resource type="Script" uid="uid://d0mttanmyif48" path="res://RPG/Player/player.gd" id="player_script"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sbtw0"]
+shader = ExtResource("2_w30tr")
+shader_parameter/blink_color = Color(1, 1, 1, 1)
+shader_parameter/blink_intensity = 0.0
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_itu05"]
 atlas = ExtResource("1_itu05")
@@ -425,10 +431,11 @@ collision_mask = 30
 script = ExtResource("player_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+material = SubResource("ShaderMaterial_sbtw0")
 position = Vector2(3, 6)
 scale = Vector2(2.143, 2)
 sprite_frames = SubResource("SpriteFrames_30jjw")
-animation = &"death"
+animation = &"back_attack"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(4, 22)

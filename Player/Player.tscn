@@ -1,4 +1,4 @@
-[gd_scene load_steps=81 format=3 uid="uid://cp03xgdlj7yad"]
+[gd_scene load_steps=81 format=3 uid="uid://d3c8n07v0v8da"]
 
 [ext_resource type="Script" uid="uid://cau5xdu246qlu" path="res://Player/player.gd" id="1_3e2x5"]
 [ext_resource type="Texture2D" uid="uid://b77vxb47wsosx" path="res://Player/Assets/Attacking/Attacking_000.png" id="1_kb1oy"]
@@ -344,7 +344,7 @@ animations = [{
 radius = 101.0
 height = 274.0
 
-[node name="Player" type="CharacterBody2D"]
+[node name="Player2" type="CharacterBody2D"]
 scale = Vector2(0.4, 0.4)
 script = ExtResource("1_3e2x5")
 
@@ -366,3 +366,11 @@ energy = 1.5
 texture = ExtResource("78_00hy0")
 texture_scale = 6.0
 height = 640.0
+
+[node name="HitBox" type="Area2D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HitBox"]
+position = Vector2(-2, -20)
+shape = SubResource("CapsuleShape2D_kb1oy")

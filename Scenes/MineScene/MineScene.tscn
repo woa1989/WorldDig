@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://t8gqgmj0wojy" path="res://Assets/inferno_background9_2.png" id="2_7qv5a"]
 [ext_resource type="Texture2D" uid="uid://6m3bwl885e0p" path="res://Assets/mapPack_tilesheet_2X.png" id="2_clgjb"]
 [ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="2_smjni"]
-[ext_resource type="PackedScene" uid="uid://cp03xgdlj7yad" path="res://Player/Player.tscn" id="4_clgjb"]
+[ext_resource type="PackedScene" uid="uid://d3c8n07v0v8da" path="res://Player/Player.tscn" id="4_clgjb"]
 [ext_resource type="Texture2D" uid="uid://bbkglgvcwqwni" path="res://Assets/图层 3.png" id="5_uub3m"]
 [ext_resource type="PackedScene" uid="uid://bq8xgdlj7yad" path="res://Scenes/UI/InventoryUI.tscn" id="6_inventory"]
 [ext_resource type="PackedScene" uid="uid://cq8xgdlj7yad" path="res://Scenes/UI/GameHUD.tscn" id="7_hud"]

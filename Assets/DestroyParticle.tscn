@@ -43,8 +43,10 @@ z_index = 10
 script = ExtResource("1_t5hkv")
 
 [node name="CPUParticles2D" type="GPUParticles2D" parent="."]
+emitting = false
 amount = 20
 lifetime = 0.5
+one_shot = true
 explosiveness = 1.0
 fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_fikcl")

@@ -1,7 +1,8 @@
-[gd_scene load_steps=10 format=3 uid="uid://dtvbumcytvpss"]
+[gd_scene load_steps=16 format=3 uid="uid://dtvbumcytvpss"]
 
 [ext_resource type="Texture2D" uid="uid://5d8vmafsp4gh" path="res://RPG/Enemy/bullet.webp" id="1_gjsra"]
 [ext_resource type="Script" uid="uid://cv3xaxmc8j0cx" path="res://RPG/Bullet/bullet.gd" id="1_m5653"]
+[ext_resource type="Texture2D" uid="uid://n4bd44r0ag2i" path="res://RPG/Bullet/30 InDispersal4Step3.png" id="3_tds6w"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_m5653"]
 blend_mode = 1
@@ -33,6 +34,18 @@ tracks/0/keys = {
 "update": 0,
 "values": [Color(1, 1, 1, 1)]
 }
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("AnimatedSprite2D:visible")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
 
 [sub_resource type="Animation" id="Animation_gjsra"]
 resource_name = "destory"
@@ -58,10 +71,22 @@ tracks/1/path = NodePath("Sprite2D:self_modulate")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.3),
+"times": PackedFloat32Array(0, 0.15),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
 "values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("AnimatedSprite2D:visible")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.15, 0.3),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 1,
+"values": [false, true, false]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_tds6w"]
@@ -70,8 +95,45 @@ _data = {
 &"destory": SubResource("Animation_gjsra")
 }
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_ak2i8"]
+atlas = ExtResource("3_tds6w")
+region = Rect2(0, 768, 192, 192)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_m4tme"]
+atlas = ExtResource("3_tds6w")
+region = Rect2(768, 768, 192, 192)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dxhfl"]
+atlas = ExtResource("3_tds6w")
+region = Rect2(576, 960, 192, 192)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_83li6"]
+atlas = ExtResource("3_tds6w")
+region = Rect2(384, 1152, 192, 192)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_12212"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ak2i8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_m4tme")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dxhfl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_83li6")
+}],
+"loop": false,
+"name": &"boom",
+"speed": 10.0
+}]
+
 [node name="Bullet" type="Area2D"]
-collision_mask = 2
+collision_layer = 4
+collision_mask = 32787
 script = ExtResource("1_m5653")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
@@ -93,3 +155,10 @@ shape = SubResource("CircleShape2D_gjsra")
 libraries = {
 &"": SubResource("AnimationLibrary_tds6w")
 }
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+visible = false
+sprite_frames = SubResource("SpriteFrames_12212")
+animation = &"boom"
+frame = 3
+frame_progress = 1.0
