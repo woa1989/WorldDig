@@ -20,6 +20,7 @@ var invulnerability_duration = 600 # 受伤后无敌时间(毫秒)
 var is_down_attacking = false # 是否正在下砸攻击
 var down_attack_velocity = 600.0 # 下砸攻击速度（减少50%）
 var bounce_velocity = -880.0 # 反弹速度
+var has_jumped = false # 是否通过跳跃进入空中状态
 
 # 防卡住机制相关属性
 var stuck_timer = 0.0 # 卡住计时器
@@ -36,6 +37,7 @@ var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 func _ready():
 	# 初始化玩家
 	current_health = max_health
+	has_jumped = false # 确保初始状态下玩家未跳跃
 	update_health_bar()
 	# 默认播放正面站立动画
 	animated_sprite.play("front_idle")
@@ -47,6 +49,11 @@ func _ready():
 
 # 处理输入和物理更新
 func _physics_process(delta):
+	# 检查着陆状态 - 如果玩家着陆了，重置跳跃状态
+	if is_on_floor() and has_jumped:
+		has_jumped = false
+		print("[DEBUG] 🛬 玩家着陆，重置has_jumped状态")
+	
 	# 处理重力
 	if not is_on_floor():
 		velocity.y += gravity * delta
@@ -63,16 +70,19 @@ func _physics_process(delta):
 	
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = jump_velocity
-		print("[DEBUG] 跳跃执行！设置velocity.y为: ", jump_velocity)
+		has_jumped = true # 标记玩家通过跳跃进入空中
+		print("[DEBUG] 跳跃执行！设置velocity.y为: ", jump_velocity, ", has_jumped=true")
 	
 	# 处理移动 - 允许在攻击时移动，但下砸攻击和弹反时不允许
 	if not is_parrying and not is_down_attacking:
 		handle_movement()
 	
-	# 处理下砸攻击（空中状态下按下+攻击）
-	if Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and not is_on_floor() and not is_down_attacking and not is_attacking:
-		print("[DEBUG] 🔨 下砸攻击输入检测到！开始下砸攻击")
+	# 处理下砸攻击（必须先跳跃才能在空中使用下砸攻击）
+	if Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and not is_on_floor() and has_jumped and not is_down_attacking and not is_attacking:
+		print("[DEBUG] 🔨 下砸攻击输入检测到！开始下砸攻击（玩家已跳跃）")
 		start_down_attack()
+	elif Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and not is_on_floor() and not has_jumped:
+		print("[DEBUG] ❌ 下砸攻击被拒绝：玩家未通过跳跃进入空中（可能是从高处掉落）")
 	# 检查是否停止下砸攻击（松开下键或攻击键）
 	elif is_down_attacking and (not Input.is_action_pressed("down") or not Input.is_action_pressed("dig")):
 		print("[DEBUG] 🔨 玩家松开下砸攻击键，结束下砸攻击")
@@ -82,7 +92,7 @@ func _physics_process(delta):
 		print("[DEBUG] 🗡️ 攻击输入检测到！开始攻击")
 		attack()
 	elif Input.is_action_just_pressed("dig"):
-		print("[DEBUG] 攻击输入检测到，但状态不允许 - 攻击中: ", is_attacking, ", 防御中: ", is_defending, ", 下砸中: ", is_down_attacking)
+		print("[DEBUG] 攻击输入检测到，但状态不允许 - 攻击中: ", is_attacking, ", 防御中: ", is_defending, ", 下砸中: ", is_down_attacking, ", 已跳跃: ", has_jumped, ", 在地面: ", is_on_floor())
 	
 	# 处理防御
 	if Input.is_action_just_pressed("defend") and not is_attacking:
@@ -371,24 +381,18 @@ func reflect_attack(damage, attacker = null):
 
 # 反弹子弹函数 - 将子弹原路返回并重置射程
 func reflect_bullet(bullet):
-	print("[DEBUG] 🔄 开始反弹子弹")
-	
 	# 检查子弹是否有速度信息
 	if bullet.has_meta("velocity"):
 		# 反转子弹速度方向
 		var original_velocity = bullet.get_meta("velocity")
 		var reflected_velocity = - original_velocity
 		bullet.set_meta("velocity", reflected_velocity)
-		print("[DEBUG] 子弹速度已反转: ", original_velocity, " -> ", reflected_velocity)
 		
 		# 修改子弹的伤害目标（让子弹能伤害敌人而不是玩家）
 		bullet.set_meta("reflected", true)
-		print("[DEBUG] 子弹已标记为反弹状态")
 		
 		# 重置子弹的生命周期计时器，恢复完整射程
 		reset_bullet_lifetime(bullet)
-	else:
-		print("[DEBUG] 子弹没有速度信息，无法反弹")
 
 # 重置子弹生命周期计时器
 func reset_bullet_lifetime(bullet):
@@ -404,31 +408,23 @@ func reset_bullet_lifetime(bullet):
 			child.stop()
 			child.wait_time = bullet_lifetime
 			child.start()
-			print("[DEBUG] 子弹生命周期已重置，新射程: ", BULLET_RANGE)
 			break
 
 # 受到伤害 - 处理弹反、防御和伤害逻辑
 func take_damage(damage, attacker = null) -> bool:
-	print("[DEBUG] 玩家受到攻击 - 伤害: ", damage, ", 攻击者: ", attacker)
-	print("[DEBUG] 当前状态 - 弹反: ", is_parrying, ", 防御: ", is_defending, ", 无敌: ", is_invulnerable)
-	print("[DEBUG] 弹反计时器: ", parry_timer, "ms")
-	
 	# 如果正在弹反，反弹伤害
 	if is_parrying:
-		print("[DEBUG] ⚡ 弹反状态中！反弹攻击")
 		reflect_attack(damage, attacker)
 		return true # 返回 true 表示成功格挡
 	
 	# 如果正在防御且在弹反窗口内，触发弹反
 	if is_defending and parry_timer <= parry_window_duration:
-		print("[DEBUG] ⚡ 完美弹反！触发反弹")
 		parry() # 激活弹反状态
 		reflect_attack(damage, attacker)
 		return true # 返回 true 表示成功格挡
 	
 	# 如果处于无敌状态，不受伤害
 	if is_invulnerable:
-		print("[DEBUG] 💫 无敌状态，免疫伤害")
 		return false # 返回 false 表示未受伤害但也未格挡
 	
 	# 应用伤害
@@ -502,6 +498,7 @@ func restart_game():
 	is_parrying = false
 	is_invulnerable = false
 	is_down_attacking = false
+	has_jumped = false # 重置跳跃状态
 	parry_timer = 0
 	invulnerability_timer = 0
 	velocity = Vector2.ZERO
@@ -602,6 +599,9 @@ func trigger_bounce():
 	is_down_attacking = false
 	is_attacking = false
 	
+	# 保持has_jumped为true，允许连续下砸攻击（无限弹跳）
+	# has_jumped = true  # 已经是true，不需要重新设置
+	
 	# 清理下砸攻击区域
 	for child in get_children():
 		if child is Area2D and child.has_method("queue_free"):
@@ -613,7 +613,7 @@ func trigger_bounce():
 	# 播放反弹动画或效果
 	animated_sprite.play("front_idle") # 可以后续添加专门的反弹动画
 	
-	print("[DEBUG] 反弹完成，玩家可以立即再次下砸攻击实现无限弹跳！")
+	print("[DEBUG] 反弹完成，玩家保持跳跃状态，可以立即再次下砸攻击实现无限弹跳！")
 
 # 结束下砸攻击
 func end_down_attack():

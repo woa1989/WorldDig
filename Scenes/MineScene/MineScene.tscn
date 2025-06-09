@@ -330,11 +330,10 @@ tile_set = SubResource("TileSet_osjyn")
 position = Vector2(62, 71)
 
 [node name="LightSystem" type="DirectionalLight2D" parent="."]
-color = Color(0.8, 0.7, 0.5, 1)
-energy = 0.5
+color = Color(0, 0, 0, 1)
 
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
-color = Color(0.1, 0.1, 0.15, 1)
+color = Color(0.0635278, 0.0229752, 0.032928, 1)
 
 [node name="UI" type="CanvasLayer" parent="."]
 

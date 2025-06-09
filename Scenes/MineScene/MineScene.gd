@@ -3,7 +3,7 @@ extends Node2D
 @onready var dirt_layer: TileMapLayer = $Dirt
 @onready var ore_layer: TileMapLayer = $Ore
 @onready var player: CharacterBody2D = $Player
-@onready var light_system: DirectionalLight2D = $LightSystem
+# @onready var light_system: DirectionalLight2D = $LightSystem
 
 var torch_lights: Node2D # 动态创建，不用@onready
 
@@ -19,9 +19,7 @@ func _ready():
 	
 	# 等待一帧确保所有节点都初始化完成
 	await get_tree().process_frame
-	
-	# 设置环境光
-	setup_lighting()
+
 	
 	# 创建火把光源容器
 	create_torch_lights_container()
@@ -56,17 +54,16 @@ func _ready():
 	timer.autostart = true
 	add_child(timer)
 
-func setup_lighting():
-	"""设置基础照明系统"""
-	if light_system:
-		# 设置微弱的环境光
-		light_system.energy = 0.1
-		light_system.color = Color(0.2, 0.2, 0.3, 1)
-	
-	# 保持原始深色设置以配合火把照明系统
-	var canvas_modulate = $CanvasModulate
-	if canvas_modulate:
-		canvas_modulate.color = Color(0.1, 0.1, 0.15, 1)
+#func setup_lighting():
+	#"""设置基础照明系统"""
+	#if light_system:
+		## 设置微弱的环境光 - 亮度提升50%
+		#light_system.energy = 15.25
+		#light_system.color = Color(0, 0, 0, 1)
+	# 保持原始深色设置以配合火把照明系统，但稍微提亮以配合更亮的火把
+	#var canvas_modulate = $CanvasModulate
+	#if canvas_modulate:
+		#canvas_modulate.color = Color(0.12, 0.12, 0.12, 1)
 
 func create_torch_lights_container():
 	"""创建火把光源容器"""
@@ -103,8 +100,9 @@ func create_torch_light(grid_pos: Vector2):
 		if light_instance.has_method("setup_torch_light"):
 			light_instance.setup_torch_light()
 		elif light_instance is PointLight2D:
-			light_instance.energy = 1.0
-			light_instance.texture_scale = 2.0
+			# 火把光源亮度和距离提升50%
+			light_instance.energy = 1.5
+			light_instance.texture_scale = 3.0
 			light_instance.color = Color(1.0, 0.8, 0.5, 1)
 		active_torch_lights[grid_pos] = light_instance
 		print("在位置", grid_pos, "创建火把光源")
