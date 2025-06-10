@@ -1,4 +1,4 @@
-[gd_scene load_steps=83 format=3 uid="uid://d3c8n07v0v8da"]
+[gd_scene load_steps=84 format=3 uid="uid://d3c8n07v0v8da"]
 
 [ext_resource type="Script" uid="uid://cau5xdu246qlu" path="res://Player/player.gd" id="1_3e2x5"]
 [ext_resource type="Texture2D" uid="uid://b77vxb47wsosx" path="res://Player/Assets/Attacking/Attacking_000.png" id="1_kb1oy"]
@@ -78,6 +78,7 @@
 [ext_resource type="Texture2D" uid="uid://bk2v5x6w05osd" path="res://Player/Assets/Jump Start/Jump Start_005.png" id="75_vlhxl"]
 [ext_resource type="Texture2D" uid="uid://31dn0lirpn5c" path="res://Player/Assets/Jump Loop/Jump Loop_001.png" id="76_wy7gj"]
 [ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="78_00hy0"]
+[ext_resource type="PackedScene" uid="uid://yam05o5ebvs5" path="res://RPG/Player/HealthBar.tscn" id="79_healthbar"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_dter7"]
 animations = [{
@@ -345,13 +346,14 @@ radius = 89.5
 height = 240.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_00hy0"]
-size = Vector2(95, 156.25)
+size = Vector2(180, 110)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_down_attack"]
 size = Vector2(16.25, 100)
 
 [node name="Player2" type="CharacterBody2D"]
 scale = Vector2(0.4, 0.4)
+collision_mask = 154
 script = ExtResource("1_3e2x5")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
@@ -374,18 +376,19 @@ texture = ExtResource("78_00hy0")
 texture_scale = 7.0
 
 [node name="HitBox" type="Area2D" parent="."]
-position = Vector2(0, 200)
-collision_layer = 2
-collision_mask = 0
+collision_layer = 4
+collision_mask = 2
+monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitBox"]
-position = Vector2(5, -202.5)
+position = Vector2(57.5, -4.99997)
 scale = Vector2(0.999999, 0.999999)
 shape = SubResource("RectangleShape2D_00hy0")
 
 [node name="DownAttackArea" type="Area2D" parent="."]
 position = Vector2(0, 140)
-collision_layer = 0
+collision_layer = 4
+collision_mask = 18
 monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DownAttackArea"]
@@ -393,9 +396,15 @@ position = Vector2(-0.625011, 27.5)
 shape = SubResource("RectangleShape2D_down_attack")
 
 [node name="DebugVisual" type="ColorRect" parent="DownAttackArea"]
-visible = false
 offset_left = -10.0
 offset_top = -22.0
 offset_right = 8.0
 offset_bottom = 75.0
 color = Color(1, 0, 0, 0.3)
+
+[node name="HealthBar" parent="." instance=ExtResource("79_healthbar")]
+visible = false
+offset_left = -82.5
+offset_top = -190.0
+offset_right = 84.5
+offset_bottom = -163.0

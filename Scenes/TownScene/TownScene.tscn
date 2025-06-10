@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bcvgbf5gvi5es" path="res://Scenes/TownScene/TownScene.gd" id="1_hg8xq"]
 [ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="2_cm88s"]
-[ext_resource type="PackedScene" uid="uid://cp03xgdlj7yad" path="res://Player/Player.tscn" id="3_4ha8a"]
+[ext_resource type="PackedScene" uid="uid://d3c8n07v0v8da" path="res://Player/Player.tscn" id="3_4ha8a"]
 [ext_resource type="Texture2D" uid="uid://c0lxcphht1wne" path="res://Assets/A34B2FC77BD5CB5B0D32D121C4F8F3AF.png" id="3_ajotg"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ajotg"]
@@ -61,7 +61,7 @@ texture_region_size = Vector2i(128, 128)
 
 [sub_resource type="TileSet" id="TileSet_7xnal"]
 tile_size = Vector2i(128, 128)
-physics_layer_0/collision_layer = 1
+physics_layer_0/collision_layer = 16
 sources/0 = SubResource("TileSetAtlasSource_ajotg")
 sources/4 = SubResource("TileSetAtlasSource_7xnal")
 
@@ -124,6 +124,7 @@ offset_left = -50.0
 offset_top = -90.0
 offset_right = 50.0
 offset_bottom = -64.0
+theme_override_font_sizes/font_size = 28
 text = "商店"
 horizontal_alignment = 1
 
@@ -137,10 +138,11 @@ shape = SubResource("RectangleShape2D_shop")
 [node name="ShopHint" type="Label" parent="Buildings/Shop"]
 visible = false
 modulate = Color(1, 1, 0, 1)
-offset_left = -60.0
-offset_top = 70.0
-offset_right = 60.0
-offset_bottom = 96.0
+offset_left = -101.0
+offset_top = -210.0
+offset_right = 79.0
+offset_bottom = -167.0
+theme_override_font_sizes/font_size = 30
 text = "按空格键进入"
 horizontal_alignment = 1
 
@@ -157,6 +159,7 @@ offset_left = -50.0
 offset_top = -80.0
 offset_right = 50.0
 offset_bottom = -54.0
+theme_override_font_sizes/font_size = 28
 text = "矿井入口"
 horizontal_alignment = 1
 
@@ -170,10 +173,11 @@ shape = SubResource("RectangleShape2D_mine")
 [node name="MineHint" type="Label" parent="Buildings/Mine"]
 visible = false
 modulate = Color(1, 1, 0, 1)
-offset_left = -60.0
-offset_top = 60.0
-offset_right = 60.0
-offset_bottom = 86.0
+offset_left = -103.0
+offset_top = -166.0
+offset_right = 77.0
+offset_bottom = -123.0
+theme_override_font_sizes/font_size = 30
 text = "按空格键进入"
 horizontal_alignment = 1
 
@@ -226,11 +230,16 @@ text = "金币: 0"
 vertical_alignment = 1
 
 [node name="MapBoundaries" type="StaticBody2D" parent="."]
+collision_layer = 16
 
 [node name="LeftWall" type="CollisionShape2D" parent="MapBoundaries"]
+light_mask = 17
+visibility_layer = 17
 position = Vector2(-1200, 0)
 shape = SubResource("RectangleShape2D_left_wall")
 
 [node name="RightWall" type="CollisionShape2D" parent="MapBoundaries"]
+light_mask = 17
+visibility_layer = 17
 position = Vector2(1200, 0)
 shape = SubResource("RectangleShape2D_right_wall")

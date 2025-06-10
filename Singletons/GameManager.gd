@@ -7,8 +7,8 @@ signal money_changed(new_amount)
 signal inventory_changed()
 
 var player_money = 100 # 初始金币
-var player_health = 100
-var player_max_health = 100
+var player_health = 3
+var player_max_health = 3
 
 # 装备和升级
 var pickaxe_level = 1
@@ -130,8 +130,8 @@ func damage_player(amount):
 		player_died()
 
 func player_died():
-	# 重置到城镇
-	get_tree().change_scene_to_file("res://Scenes/TownScene/TownScene.tscn")
+	# 使用call_deferred延迟场景切换，避免在物理回调期间移除CollisionObject节点
+	get_tree().call_deferred("change_scene_to_file", "res://Scenes/TownScene/TownScene.tscn")
 
 func change_scene(scene_path):
 	current_scene = scene_path

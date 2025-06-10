@@ -7,6 +7,18 @@ extends CharacterBody2D
 @onready var collision_shape = $CollisionShape2D
 @onready var down_attack_area = $DownAttackArea
 @onready var down_attack_debug_visual = $DownAttackArea/DebugVisual
+@onready var point_light = $PointLight2D
+@onready var hit_box = $HitBox
+@onready var health_bar = $HealthBar
+
+# 游戏模式检测
+var is_rpg_mode = false
+
+# 血量系统
+var max_health = 3
+var current_health = 3
+var health_bar_show_timer = 0.0
+var health_bar_show_duration = 3.0 # 血条显示3秒后隐藏
 
 # 移动相关
 var speed = 345.6 # 在288.0基础上增加20% (288.0 * 1.2)
@@ -67,6 +79,33 @@ var invulnerability_timer = 0 # 无敌时间计时器
 var invulnerability_duration = 600 # 受伤后无敌时间(毫秒)
 
 func _ready():
+	# 检测游戏模式 - 通过场景路径或父节点名称判断
+	var scene_tree = get_tree()
+	if scene_tree and scene_tree.current_scene:
+		var scene_name = scene_tree.current_scene.name
+		var scene_path = scene_tree.current_scene.scene_file_path
+		
+		# 更精确的模式检测
+		is_rpg_mode = (scene_name == "Game" or
+					   scene_path.contains("RPG") or
+					   scene_name.to_lower().contains("rpg"))
+		
+		print("[DEBUG] 场景名称: ", scene_name)
+		print("[DEBUG] 场景路径: ", scene_path)
+		print("[DEBUG] 检测到游戏模式: ", "RPG模式" if is_rpg_mode else "挖掘模式")
+	
+	# 在RPG模式下禁用火把照明
+	if is_rpg_mode and point_light:
+		point_light.visible = false
+		point_light.enabled = false
+		print("[DEBUG] RPG模式：已禁用火把照明")
+	else:
+		# 挖掘模式下确保火把照明启用
+		if point_light:
+			point_light.visible = true
+			point_light.enabled = true
+			print("[DEBUG] 挖掘模式：已启用火把照明")
+	
 	# 设置初始动画
 	if animated_sprite:
 		animated_sprite.play("Idle")
@@ -95,6 +134,19 @@ func _ready():
 		down_attack_area.body_entered.connect(_on_down_attack_area_body_entered)
 		down_attack_area.area_entered.connect(_on_down_attack_area_area_entered)
 	
+	# 连接HitBox为攻击区域（两种模式都支持）
+	if hit_box:
+		hit_box.body_entered.connect(_on_attack_area_body_entered)
+		hit_box.monitoring = false # 默认关闭，攻击时开启
+		# 设置初始攻击盒子位置
+		update_hitbox_position()
+		print("[DEBUG] HitBox攻击区域已设置（支持两种模式）")
+	
+	# 初始化血条
+	if health_bar:
+		health_bar.visible = false
+		update_health_bar()
+	
 	# 确保玩家可见
 	visible = true
 	modulate = Color.WHITE
@@ -112,6 +164,13 @@ func _physics_process(delta):
 		bounce_timer -= delta
 		if bounce_timer <= 0:
 			is_bouncing = false
+	
+	# 处理血条显示逻辑：血量不足时持续显示，满血时隐藏
+	if health_bar:
+		if current_health < max_health:
+			health_bar.visible = true
+		else:
+			health_bar.visible = false
 	
 	# 墙壁检测
 	detect_wall()
@@ -150,44 +209,6 @@ func _physics_process(delta):
 	# 移动处理 - 在弹反和下砸攻击时不允许移动
 	if not is_parrying and not is_down_attacking:
 		handle_movement()
-	
-	# 处理下砸攻击（只有主动跳跃后在空中状态下按下+攻击才可以触发）
-	if Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and not is_on_floor() and not is_down_attacking and not is_attacking and can_down_attack:
-		start_down_attack()
-	# 检查是否停止下砸攻击（松开下键或攻击键）
-	elif is_down_attacking and (not Input.is_action_pressed("down") or not Input.is_action_pressed("dig")):
-		end_down_attack()
-	
-	# 处理防御
-	if Input.is_action_just_pressed("defend") and not is_attacking:
-		defend()
-	
-	# 处理防御释放
-	if Input.is_action_just_released("defend"):
-		release_defend()
-	
-	# 更新弹反计时器
-	if is_defending:
-		parry_timer += delta * 1000 # 转换为毫秒
-		# 检查弹反窗口是否结束
-		if parry_timer >= parry_window_duration:
-			is_defending = false
-			parry_timer = 0
-	
-	# 更新无敌时间
-	if is_invulnerable:
-		invulnerability_timer += delta * 1000
-		if invulnerability_timer >= invulnerability_duration:
-			is_invulnerable = false
-			invulnerability_timer = 0
-			# 恢复正常显示
-			set_shader_blink_intensity(0.0)
-		else:
-			# 闪烁效果
-			if int(invulnerability_timer / 100) % 2 == 0:
-				set_shader_blink_intensity(0.8)
-			else:
-				set_shader_blink_intensity(0.0)
 	
 	move_and_slide()
 	
@@ -241,7 +262,11 @@ func handle_movement():
 		
 		# 更新面向方向
 		if not is_wall_sliding:
+			var old_direction = facing_direction
 			facing_direction = direction
+			# 如果方向改变，更新攻击盒子位置
+			if old_direction != facing_direction:
+				update_hitbox_position()
 		
 		# 翻转精灵
 		if animated_sprite:
@@ -481,6 +506,11 @@ func take_damage(damage, attacker = null) -> bool:
 	var game_manager = get_node("/root/GameManager")
 	if game_manager:
 		game_manager.damage_player(damage)
+	
+	# 更新本地血量并显示血条
+	current_health = game_manager.player_health
+	update_health_bar()
+	show_health_bar()
 
 	
 	# 设置短暂无敌时间
@@ -490,7 +520,9 @@ func take_damage(damage, attacker = null) -> bool:
 	# 播放受伤动画
 	if animated_sprite:
 		play_anim("Hurt")
-		animated_sprite.animation_finished.connect(_on_hurt_animation_finished, CONNECT_ONE_SHOT)
+		# 安全地连接信号，避免重复连接
+		if not animated_sprite.animation_finished.is_connected(_on_hurt_animation_finished):
+			animated_sprite.animation_finished.connect(_on_hurt_animation_finished, CONNECT_ONE_SHOT)
 	
 	return false # 返回 false 表示受到了伤害
 
@@ -515,16 +547,90 @@ func play_anim(anim_name: String):
 	if animated_sprite and animated_sprite.animation != anim_name:
 		animated_sprite.play(anim_name)
 
+# 血条相关函数
+func update_health_bar():
+	if health_bar:
+		# HealthBar.tscn的根节点就是ProgressBar
+		health_bar.max_value = max_health
+		health_bar.value = current_health
+		# 设置血条为红色
+		var style_box = StyleBoxFlat.new()
+		style_box.bg_color = Color.RED
+		health_bar.add_theme_stylebox_override("fill", style_box)
+
+func show_health_bar():
+	# 血条显示逻辑已移至_physics_process中统一处理
+	# 这个函数保留用于兼容性，但实际显示逻辑由血量状态决定
+	pass
+
 # 新增：统一输入处理
 func handle_input(delta):
-	# 挖掘输入检查 - 只在按键刚按下时检查一次
-	if Input.is_action_just_pressed("dig"):
-		print("[DEBUG] J键被按下，调用 handle_digging")
-		handle_digging(delta)
+	# ===== 统一的下砸攻击处理（两种模式都支持） =====
+	# 下砸攻击：在空中状态下按下+dig键触发
+	if Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and not is_on_floor() and not is_down_attacking and not is_attacking and can_down_attack:
+		print("[DEBUG] 触发下砸攻击 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
+		start_down_attack()
+	# 检查是否停止下砸攻击（松开下键或dig键）
+	elif is_down_attacking and (not Input.is_action_pressed("down") or not Input.is_action_pressed("dig")):
+		end_down_attack()
+	
+	# ===== 模式特定的输入处理 =====
+	elif is_rpg_mode:
+		# RPG模式：dig键作为攻击键
+		if Input.is_action_just_pressed("dig") and not is_attacking and not is_defending:
+			print("[DEBUG] RPG模式攻击输入")
+			perform_attack()
 	else:
-		# 更新挖掘计时器
-		if dig_timer > 0:
-			dig_timer -= delta
+		# 挖掘模式：dig键作为挖掘键或近战攻击键
+		if Input.is_action_just_pressed("dig"):
+			# 如果在地面上且没有按方向键，执行近战攻击
+			if is_on_floor() and not (Input.is_action_pressed("up") or Input.is_action_pressed("down") or
+									  Input.is_action_pressed("left") or Input.is_action_pressed("right")) and not is_attacking:
+				print("[DEBUG] 挖掘模式地面近战攻击")
+				perform_melee_attack()
+			else:
+				print("[DEBUG] 挖掘模式，调用 handle_digging")
+				handle_digging(delta)
+		else:
+			# 更新挖掘计时器
+			if dig_timer > 0:
+				dig_timer -= delta
+	
+	# ===== 通用防御系统（两种模式都支持） =====
+	# 防御输入 (K键)
+	if Input.is_action_just_pressed("defend") and not is_attacking:
+		print("[DEBUG] 开始防御 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
+		start_unified_defend()
+	
+	# 防御释放
+	if Input.is_action_just_released("defend"):
+		print("[DEBUG] 结束防御 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
+		end_unified_defend()
+	
+	# ===== 通用状态更新（两种模式都需要） =====
+	
+	# 更新弹反计时器
+	if is_defending:
+		parry_timer += delta * 1000 # 转换为毫秒
+		# 检查弹反窗口是否结束
+		if parry_timer >= parry_window_duration:
+			is_defending = false
+			parry_timer = 0
+	
+	# 更新无敌时间
+	if is_invulnerable:
+		invulnerability_timer += delta * 1000
+		if invulnerability_timer >= invulnerability_duration:
+			is_invulnerable = false
+			invulnerability_timer = 0
+			# 恢复正常显示
+			set_shader_blink_intensity(0.0)
+		else:
+			# 闪烁效果
+			if int(invulnerability_timer / 100) % 2 == 0:
+				set_shader_blink_intensity(0.8)
+			else:
+				set_shader_blink_intensity(0.0)
 
 # 工具函数：生成周围8格偏移
 func get_surrounding_offsets() -> Array:
@@ -550,24 +656,25 @@ func try_dig_nearby(world_position: Vector2) -> bool:
 			return true
 	return false
 
-# ========================= 防御系统 =========================
+# ========================= 统一防御系统 =========================
 
-# 防御函数 - 开始防御状态，激活1秒弹反窗口
-func defend():
+# 统一防御函数 - 适用于两种模式
+func start_unified_defend():
+	"""开始防御状态，激活1秒弹反窗口"""
 	is_defending = true
 	parry_timer = 0 # 重置弹反计时器
-	print("[DEBUG] 玩家开始防御 - 激活1秒弹反窗口")
-	
-	# 可以添加防御动画或效果
-	# ...
+	print("[DEBUG] 开始防御 - 激活1秒弹反窗口 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
 
-# 释放防御 - 手动结束防御状态
-func release_defend():
-	print("[DEBUG] 玩家手动释放防御 - 弹反计时器: ", parry_timer, "ms")
+# 统一防御释放函数
+func end_unified_defend():
+	"""结束防御状态"""
+	print("[DEBUG] 手动释放防御 - 弹反计时器: ", parry_timer, "ms - 模式: ", "RPG" if is_rpg_mode else "挖掘")
 	is_defending = false
 	parry_timer = 0
 
-# 弹反函数 - 激活短暂的弹反状态
+# ========================= 防御系统 =========================
+
+# 防御函数 - 开始防御状态，激活1秒弹反窗口
 func parry():
 	is_defending = false
 	is_parrying = true
@@ -631,7 +738,8 @@ func reset_bullet_lifetime(bullet):
 	# 查找子弹的计时器并重置
 	for child in bullet.get_children():
 		if child is Timer:
-			# 重新计算子弹生命周期（使用与gun.gd相同的参数）
+			# 使用与gun.gd相同的参数重新计算子弹生命周期
+			# 这样确保反弹后的子弹有完整的射程
 			const BULLET_VELOCITY = 850.0
 			const BULLET_RANGE = 500.0
 			var bullet_lifetime = BULLET_RANGE / BULLET_VELOCITY
@@ -640,7 +748,7 @@ func reset_bullet_lifetime(bullet):
 			child.stop()
 			child.wait_time = bullet_lifetime
 			child.start()
-			print("[DEBUG] 子弹生命周期已重置，新射程: ", BULLET_RANGE)
+			print("[DEBUG] 子弹生命周期已重置，新射程: ", BULLET_RANGE, ", 生命周期: ", bullet_lifetime)
 			break
 
 # ========================= 下砸攻击系统 =========================
@@ -687,8 +795,9 @@ func start_down_attack():
 	
 
 func _on_down_attack_area_body_entered(body):
-	"""下砸攻击区域检测到碰撞体 - 增强调试版本"""
+	"""下砸攻击区域检测到碰撞体 - 支持两种模式"""
 	print("[DEBUG] 🔨 下砸攻击检测到碰撞体: ", body.name, ", 类型: ", body.get_class())
+	print("[DEBUG] 🔨 当前模式: ", "RPG" if is_rpg_mode else "挖掘")
 	print("[DEBUG] 🔨 当前下砸攻击状态: ", is_down_attacking)
 	print("[DEBUG] 🔨 当前玩家速度: ", velocity)
 	print("[DEBUG] 🔨 玩家位置: ", global_position)
@@ -700,7 +809,7 @@ func _on_down_attack_area_body_entered(body):
 	
 	var should_bounce = false
 	
-	# 如果击中敌人
+	# 如果击中敌人（两种模式都支持）
 	if body.has_method("take_damage") and body != self:
 		print("[DEBUG] 🔨 下砸攻击击中敌人！造成伤害: ", attack_damage)
 		body.take_damage(attack_damage, self)
@@ -710,14 +819,20 @@ func _on_down_attack_area_body_entered(body):
 		  body.name.to_lower().contains("ground") or body.name.to_lower().contains("floor") or
 		  body.name.to_lower().contains("tile") or body is TileMapLayer or body is TileMap):
 		print("[DEBUG] 🔨 下砸攻击击中地面/瓦片！")
-		# 矿工下砸攻击：尝试挖掘击中位置的土块
-		if perform_down_attack_dig():
-			print("[DEBUG] ⛏️ 挖掘成功，触发反弹")
+		
+		if is_rpg_mode:
+			# RPG模式：不进行挖掘，直接反弹
+			print("[DEBUG] ⚔️ RPG模式下砸攻击：不挖掘，直接反弹")
 			should_bounce = true
 		else:
-			print("[DEBUG] ⛏️ 挖掘失败，仍然触发反弹")
-			# 如果挖掘失败，仍然触发反弹（可能击中不可挖掘的物体）
-			should_bounce = true
+			# 挖掘模式：尝试挖掘击中位置的土块
+			if perform_down_attack_dig():
+				print("[DEBUG] ⛏️ 挖掘成功，触发反弹")
+				should_bounce = true
+			else:
+				print("[DEBUG] ⛏️ 挖掘失败，仍然触发反弹")
+				# 如果挖掘失败，仍然触发反弹（可能击中不可挖掘的物体）
+				should_bounce = true
 	# 如果是任何静态物体（StaticBody2D）也可以反弹
 	elif body is StaticBody2D:
 		print("[DEBUG] 🔨 下砸攻击击中静态物体！")
@@ -796,55 +911,130 @@ func disable_down_attack_area(reason: String = "未知原因"):
 	
 	print("[DEBUG] ", reason, "时下砸攻击区域已通过预创建方式禁用")
 
-# ========================= 辅助函数 =========================
+# ========================= 统一攻击系统 =========================
 
+# 更新攻击盒子位置函数
+func update_hitbox_position():
+	"""根据玩家朝向更新HitBox位置"""
+	if not hit_box:
+		return
+	
+	# 攻击盒子的基本偏移距离（进一步增加攻击距离）
+	var base_offset_x = 180.0 # 距离玩家中心的水平距离（从120再增加到180，增加50%）
+	var base_offset_y = -10.0 # 距离玩家中心的垂直距离（稍微向下调整，更容易攻击到敌人）
+	
+	# 根据facing_direction调整水平位置
+	var attack_offset = Vector2(base_offset_x * facing_direction, base_offset_y)
+	
+	# 设置HitBox位置
+	hit_box.position = attack_offset
+	
+	print("[DEBUG] 更新HitBox位置 - 朝向: ", facing_direction, ", 新位置: ", hit_box.position)
+
+# RPG模式攻击函数
+func perform_attack():
+	"""在RPG模式下执行攻击"""
+	if not is_rpg_mode or is_attacking:
+		return
+		
+	print("[DEBUG] RPG模式攻击开始，面向方向: ", facing_direction)
+	is_attacking = true
+	
+	# 根据玩家朝向更新攻击盒子位置
+	update_hitbox_position()
+	
+	# 启用攻击区域检测
+	if hit_box:
+		hit_box.monitoring = true
+		print("[DEBUG] HitBox攻击区域已启用，位置: ", hit_box.position, ", collision_mask: ", hit_box.collision_mask)
+	
+	# 播放攻击动画
+	if animated_sprite:
+		animated_sprite.play("Dig") # 使用挖掘动画作为攻击动画
+	
+	# 攻击持续时间
+	await get_tree().create_timer(0.4).timeout
+	
+	# 结束攻击
+	is_attacking = false
+	if hit_box:
+		hit_box.monitoring = false
+	
+	print("[DEBUG] RPG模式攻击结束")
+
+# 挖掘模式近战攻击函数
+func perform_melee_attack():
+	"""在挖掘模式下执行近战攻击"""
+	if is_attacking:
+		return
+		
+	print("[DEBUG] 挖掘模式近战攻击开始，面向方向: ", facing_direction)
+	is_attacking = true
+	
+	# 根据玩家朝向更新攻击盒子位置
+	update_hitbox_position()
+	
+	# 启用攻击区域检测
+	if hit_box:
+		hit_box.monitoring = true
+		print("[DEBUG] HitBox攻击区域已启用，位置: ", hit_box.position, ", collision_mask: ", hit_box.collision_mask)
+	
+	# 播放攻击动画
+	if animated_sprite:
+		animated_sprite.play("Dig") # 使用挖掘动画作为攻击动画
+	
+	# 攻击持续时间
+	await get_tree().create_timer(0.3).timeout # 比RPG模式稍快
+	
+	# 结束攻击
+	is_attacking = false
+	if hit_box:
+		hit_box.monitoring = false
+	
+	print("[DEBUG] 挖掘模式近战攻击结束")
+
+# 攻击区域检测函数（适用于RPG模式和挖掘模式的下砸攻击）
+func _on_attack_area_body_entered(body):
+	"""RPG模式下的攻击区域检测"""
+	print("[DEBUG] HitBox检测到碰撞体: ", body.name, ", 类型: ", body.get_class())
+	print("[DEBUG] 当前模式: ", "RPG" if is_rpg_mode else "挖掘")
+	print("[DEBUG] 是否正在攻击: ", is_attacking)
+	
+	if body == self:
+		print("[DEBUG] 忽略玩家自身")
+		return
+	
+	# 检查是否可以对该物体造成伤害
+	if body.has_method("take_damage"):
+		print("[DEBUG] ⚔️ 对敌人造成伤害: ", attack_damage)
+		var damage_result = body.take_damage(attack_damage, self)
+		print("[DEBUG] 伤害结果: ", damage_result)
+	else:
+		print("[DEBUG] 目标无法受到伤害（没有take_damage方法）")
+		print("[DEBUG] 目标的方法列表: ")
+		for method in body.get_method_list():
+			if method.name.contains("damage") or method.name.contains("hurt") or method.name.contains("health"):
+				print("  - ", method.name)
+
+# ========================= RPG战斗系统 =========================
+
+# ========================= 辅助函数 =========================
 
 func set_shader_blink_intensity(intensity: float):
 	"""设置玩家的Shader的闪烁强度"""
 	if animated_sprite and animated_sprite.material:
 		animated_sprite.material.set_shader_parameter("blink_intensity", intensity)
 
-
-# 延迟执行挖掘操作的函数
-func _execute_delayed_dig(dig_info: Dictionary):
-	"""动画播放完成后执行实际的挖掘操作"""
-	print("[DEBUG] 挖掘动画完成，执行实际挖掘操作")
-	print("[DEBUG] 挖掘方向: ", dig_info.direction)
-	print("[DEBUG] 挖掘位置: ", dig_info.position)
-	
-	# 执行实际的挖掘操作
-	perform_directional_dig(dig_info.direction)
-	
-	# 结束挖掘状态
-	_on_dig_animation_finished()
-
-# 矿工下砸攻击挖掘函数
 func perform_down_attack_dig() -> bool:
-	"""矿工下砸攻击时尝试挖掘下方的土块"""
-	if not is_down_attacking:
-		return false
-	
-	print("[DEBUG] ⛏️ 矿工下砸攻击开始挖掘检测...")
-	
-	# 使用与普通挖掘相同的网格计算方法
+	"""下砸攻击时的挖掘功能（在RPG模式下禁用）"""
+	if is_rpg_mode:
+		return false # RPG模式下不进行挖掘
+		
+	# 原有的挖掘逻辑
 	var tile_size = dig_range
 	var player_grid = (global_position / tile_size).floor()
 	var target_grid = player_grid + Vector2(0, 1) # 向下一格
 	var dig_position = (target_grid + Vector2(0.5, 0.5)) * tile_size
 	
-	print("[DEBUG] ⛏️ 下砸攻击挖掘位置计算:")
-	print("[DEBUG] ⛏️ - 瓦片大小: ", tile_size)
-	print("[DEBUG] ⛏️ - 玩家网格位置: ", player_grid)
-	print("[DEBUG] ⛏️ - 目标网格位置: ", target_grid)
-	print("[DEBUG] ⛏️ - 最终挖掘位置: ", dig_position)
-	
 	# 尝试在下砸位置及周围挖掘
-	var dig_success = try_dig_nearby(dig_position)
-	
-	if dig_success:
-		print("[DEBUG] ⛏️ 下砸攻击挖掘成功！获得资源")
-		
-		return true
-	else:
-		print("[DEBUG] ⛏️ 下砸攻击挖掘失败，下方可能没有可挖掘的土块")
-		return false
+	return try_dig_nearby(dig_position)

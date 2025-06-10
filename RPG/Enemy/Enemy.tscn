@@ -324,7 +324,7 @@ _data = {
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_sbhnn"]
 radius = 64.0
-height = 218.0
+height = 178.0
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_o74jf"]
 blend_mode = 1
@@ -335,23 +335,23 @@ colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
 
 [node name="Enemy" type="CharacterBody2D"]
 collision_layer = 2
-collision_mask = 24
+collision_mask = 144
 script = ExtResource("1_fwvcy")
 
 [node name="PlatformDetector" type="RayCast2D" parent="."]
 position = Vector2(0, 6)
 target_position = Vector2(0, 108)
-collision_mask = 8
+collision_mask = 16
 
 [node name="FloorDetectorLeft" type="RayCast2D" parent="."]
 position = Vector2(-80, 0)
 target_position = Vector2(0, 99)
-collision_mask = 24
+collision_mask = 16
 
 [node name="FloorDetectorRight" type="RayCast2D" parent="."]
 position = Vector2(80, -3)
 target_position = Vector2(0, 100)
-collision_mask = 24
+collision_mask = 16
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 scale = Vector2(3, 3)
@@ -384,6 +384,7 @@ libraries = {
 }
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(6, 5)
 rotation = 1.5708
 shape = SubResource("CapsuleShape2D_sbhnn")
 

@@ -7,13 +7,13 @@ enum State {
 }
 
 const WALK_SPEED = 122.0
-const SHOOT_INTERVAL = 2.0  # 射击间隔2秒
+const SHOOT_INTERVAL = 2.0 # 射击间隔2秒
 var _state := State.WALKING
-var _shoot_timer := 0.0  # 射击计时器
+var _shoot_timer := 0.0 # 射击计时器
 
 # 敌人属性
-var max_health = 3  # 最大生命值
-var current_health = 3  # 当前生命值
+var max_health = 3 # 最大生命值
+var current_health = 3 # 当前生命值
 
 
 @onready var gravity: int = ProjectSettings.get("physics/2d/default_gravity")
@@ -22,8 +22,8 @@ var current_health = 3  # 当前生命值
 @onready var floor_detector_right := $FloorDetectorRight as RayCast2D
 @onready var sprite := $Sprite2D as Sprite2D
 @onready var animation_player := $AnimationPlayer as AnimationPlayer
-@onready var gun := $Sprite2D/Gun  # 获取枪械节点引用
-@onready var health_bar := $Sprite2D/HealthBar as ProgressBar  # 获取血量条引用
+@onready var gun := $Sprite2D/Gun # 获取枪械节点引用
+@onready var health_bar := $Sprite2D/HealthBar as ProgressBar # 获取血量条引用
 
 func _ready():
 	# 初始化敌人
@@ -45,7 +45,9 @@ func _physics_process(delta: float) -> void:
 	elif not floor_detector_right.is_colliding():
 		velocity.x = - abs(WALK_SPEED)
 
+	# 墙壁检测逻辑：敌人collision_mask现在只包含环境层，所以is_on_wall()只会在碰到墙壁时触发
 	if is_on_wall():
+		print("[DEBUG] 敌人检测到墙壁，掉头")
 		velocity.x = - velocity.x
 
 	move_and_slide()
@@ -81,7 +83,7 @@ func take_damage(damage, attacker = null):
 	# 应用伤害
 	current_health -= damage
 	current_health = max(0, current_health)
-	update_health_bar()  # 更新血量条显示
+	update_health_bar() # 更新血量条显示
 	print("[DEBUG] 敌人当前生命值: ", current_health)
 	
 	# 检查是否死亡

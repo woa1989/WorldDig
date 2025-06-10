@@ -60,15 +60,17 @@ func handle_collision(body):
 	
 	# 检测碰撞目标
 	if body.has_method("take_damage"):
+		print("[DEBUG] 子弹碰撞检测 - 目标: ", body.name, ", 脚本路径: ", body.get_script().get_path() if body.get_script() else "无脚本", ", 反弹状态: ", is_reflected)
+		
 		# 如果子弹被反弹，只伤害敌人；否则只伤害玩家
 		if is_reflected:
 			# 反弹的子弹：检查是否为敌人
 			if body.get_script() and body.get_script().get_path().ends_with("enemy.gd"):
-				print("[DEBUG] 反弹子弹击中敌人")
+				print("[DEBUG] 反弹子弹击中敌人，造成伤害: ", damage * 2)
 				body.take_damage(damage * 2, self) # 反弹子弹造成双倍伤害
 				destroy()
 			else:
-				print("[DEBUG] 反弹子弹击中非敌人目标，忽略")
+				print("[DEBUG] 反弹子弹击中非敌人目标，忽略 - 目标类型: ", body.get_class())
 		else:
 			# 普通子弹：检查是否为玩家
 			if body.get_script() and body.get_script().get_path().ends_with("player.gd"):
@@ -82,7 +84,9 @@ func handle_collision(body):
 					# 玩家成功格挡，子弹已被反弹，不需要销毁
 					print("[DEBUG] 玩家成功格挡，子弹被反弹")
 			else:
-				print("[DEBUG] 普通子弹击中非玩家目标，忽略")
+				print("[DEBUG] 普通子弹击中非玩家目标，忽略 - 目标类型: ", body.get_class())
+	else:
+		print("[DEBUG] 碰撞目标没有take_damage方法 - 目标: ", body.name, ", 类型: ", body.get_class())
 
 func destroy() -> void:
 	# 设置销毁标志，防止继续处理物理和碰撞
