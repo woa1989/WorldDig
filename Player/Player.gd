@@ -509,25 +509,6 @@ func die():
 		# 禁用控制
 		set_physics_process(false)
 
-# 新增 - 处理放置火把
-func handle_torch_placement():
-	# 检测T键放置火把
-	if Input.is_action_just_pressed("place_torch"):
-		place_torch()
-
-# 新增 - 放置火把
-func place_torch():
-	# 检查玩家是否有火把道具
-	var game_manager = get_node("/root/GameManager")
-	if not game_manager:
-		return
-	
-	if game_manager.has_item("torch"):
-		# 获取放置位置（就在玩家当前位置）
-		var place_position = global_position
-		# 获取矿场引用并尝试放置火把
-		if try_place_torch_nearby(place_position):
-			game_manager.remove_item("torch", 1)
 
 # 新增：动画切换统一方法
 func play_anim(anim_name: String):
@@ -544,9 +525,6 @@ func handle_input(delta):
 		# 更新挖掘计时器
 		if dig_timer > 0:
 			dig_timer -= delta
-	
-	if Input.is_action_just_pressed("place_torch"):
-		handle_torch_placement()
 
 # 工具函数：生成周围8格偏移
 func get_surrounding_offsets() -> Array:
@@ -569,14 +547,6 @@ func try_dig_nearby(world_position: Vector2) -> bool:
 	for offset in get_surrounding_offsets():
 		var mine_scene = get_parent()
 		if mine_scene and mine_scene.has_method("dig_at_position") and mine_scene.dig_at_position(world_position + offset):
-			return true
-	return false
-
-# 火把放置：尝试当前位置及周围8格
-func try_place_torch_nearby(world_position: Vector2) -> bool:
-	for offset in get_surrounding_offsets():
-		var mine_scene = get_parent()
-		if mine_scene and mine_scene.has_method("place_torch") and mine_scene.place_torch(world_position + offset):
 			return true
 	return false
 

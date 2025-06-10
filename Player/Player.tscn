@@ -393,6 +393,7 @@ position = Vector2(-0.625011, 27.5)
 shape = SubResource("RectangleShape2D_down_attack")
 
 [node name="DebugVisual" type="ColorRect" parent="DownAttackArea"]
+visible = false
 offset_left = -10.0
 offset_top = -22.0
 offset_right = 8.0
