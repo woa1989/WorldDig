@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://df72lwrgk4pe6"]
+
+[ext_resource type="Script" uid="uid://cq7kf1e1jtnp1" path="res://Scenes/Level1/linght_text.gd" id="1_5nq3m"]
+
+[node name="LightSource" type="Marker2D"]
+script = ExtResource("1_5nq3m")

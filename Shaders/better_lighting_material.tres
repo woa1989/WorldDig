@@ -1,0 +1,22 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://dqvhij0fjxy5a"]
+
+[ext_resource type="Shader" uid="uid://dcyig5t6gvvv2" path="res://Shaders/better_lighting.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/light_count = 8
+shader_parameter/light_falloff = 2.0
+shader_parameter/apply_distance_fade = true
+shader_parameter/object_height = 1.0
+shader_parameter/shadows = false
+shader_parameter/soft_shadows = false
+shader_parameter/light_radius = 400.0
+shader_parameter/shadow_march_count = 8
+shader_parameter/shadow_march_min_step = 0.2
+shader_parameter/shadow_march_step_scale = 1.2
+shader_parameter/ambient_amount = 0.1
+shader_parameter/use_directional_light_as_ambient = false
+shader_parameter/ambient_occlusion = false
+shader_parameter/ao_step_count = 4
+shader_parameter/ao_step_size = 1.5
+shader_parameter/ao_influence = 0.3
