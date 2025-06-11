@@ -77,7 +77,7 @@
 [ext_resource type="Texture2D" uid="uid://2myrc5fwv3hk" path="res://Player/Assets/Jump Start/Jump Start_004.png" id="74_nfrjr"]
 [ext_resource type="Texture2D" uid="uid://bk2v5x6w05osd" path="res://Player/Assets/Jump Start/Jump Start_005.png" id="75_vlhxl"]
 [ext_resource type="Texture2D" uid="uid://31dn0lirpn5c" path="res://Player/Assets/Jump Loop/Jump Loop_001.png" id="76_wy7gj"]
-[ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="78_00hy0"]
+[ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="78_lr4jq"]
 [ext_resource type="PackedScene" uid="uid://yam05o5ebvs5" path="res://RPG/Player/HealthBar.tscn" id="79_healthbar"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_dter7"]
@@ -351,16 +351,14 @@ size = Vector2(180, 110)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_down_attack"]
 size = Vector2(16.25, 100)
 
-[node name="Player2" type="CharacterBody2D"]
+[node name="Player" type="CharacterBody2D"]
 scale = Vector2(0.4, 0.4)
 collision_mask = 154
 script = ExtResource("1_3e2x5")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_dter7")
-animation = &"Dig"
-frame = 11
-frame_progress = 1.0
+animation = &"jump"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(-2, -20)
@@ -369,11 +367,10 @@ shape = SubResource("CapsuleShape2D_kb1oy")
 [node name="Camera2D" type="Camera2D" parent="."]
 
 [node name="PointLight2D" type="PointLight2D" parent="."]
-position = Vector2(37.5, 7.50006)
-color = Color(1, 0.9, 0.7, 1)
-energy = 2.0
-texture = ExtResource("78_00hy0")
-texture_scale = 7.0
+shadow_enabled = true
+shadow_filter = 2
+texture = ExtResource("78_lr4jq")
+texture_scale = 6.0
 
 [node name="HitBox" type="Area2D" parent="."]
 collision_layer = 4
@@ -381,7 +378,6 @@ collision_mask = 2
 monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitBox"]
-position = Vector2(57.5, -4.99997)
 scale = Vector2(0.999999, 0.999999)
 shape = SubResource("RectangleShape2D_00hy0")
 

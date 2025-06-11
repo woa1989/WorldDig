@@ -271,44 +271,6 @@ func calculate_torch_probability_by_depth(depth: int) -> float:
 	else:
 		return 0.05
 
-# 火把密度控制函数
-func set_torch_density(density: float):
-	"""设置火把密度系数 (0.1-1.0)"""
-	torch_density_factor = clamp(density, 0.1, 1.0)
-	print("火把密度系数设置为: ", torch_density_factor)
-
-func set_min_torch_distance(distance: int):
-	"""设置火把之间的最小距离"""
-	min_torch_distance = max(distance, 1)
-	print("火把最小距离设置为: ", min_torch_distance)
-
-func regenerate_torches_with_new_density():
-	"""使用新的密度参数重新生成火把"""
-	print("正在使用新密度参数重新生成火把...")
-	
-	# 清除现有火把
-	clear_all_torches()
-	
-	# 重新生成火把
-	generate_torches()
-
-func clear_all_torches():
-	"""清除所有现有火把"""
-	var cleared_count = 0
-	
-	for pos in terrain_data:
-		var tile_data = terrain_data[pos]
-		if tile_data.get("has_torch", false):
-			# 移除ore层的火把瓦片
-			var cell_pos = Vector2i(int(pos.x), int(pos.y))
-			if ore_layer:
-				ore_layer.erase_cell(cell_pos)
-			
-			# 更新数据
-			tile_data["has_torch"] = false
-			cleared_count += 1
-	
-	print("清除了 ", cleared_count, " 个火把")
 
 func place_dirt_tile(pos: Vector2, tile_coords: Vector2, source_id: int = 0):
 	"""在dirt层放置瓦片"""
@@ -621,34 +583,8 @@ func generate_new_layers():
 	
 	print("地形已扩展到深度: ", current_max_depth)
 
-func get_current_max_depth() -> int:
-	"""获取当前最大深度"""
-	return current_max_depth
 
 func get_player_depth_from_position(world_pos: Vector2) -> int:
 	"""从世界坐标获取玩家的深度层级"""
 	var grid_pos = local_to_map(to_local(world_pos))
 	return int(grid_pos.y)
-
-# 调试和状态显示函数
-func get_terrain_status() -> Dictionary:
-	"""获取当前地形状态信息"""
-	return {
-		"current_max_depth": current_max_depth,
-		"surface_level": surface_level,
-		"generated_layers": current_max_depth - surface_level,
-		"generation_chunk_size": generation_chunk_size,
-		"trigger_distance": trigger_distance,
-		"total_tiles": terrain_data.size()
-	}
-
-func print_terrain_status():
-	"""打印当前地形状态"""
-	var status = get_terrain_status()
-	print("=== 地形状态 ===")
-	print("当前最大深度: ", status.current_max_depth)
-	print("表面深度: ", status.surface_level)
-	print("已生成层数: ", status.generated_layers)
-	print("每次生成层数: ", status.generation_chunk_size)
-	print("触发距离: ", status.trigger_distance)
-	print("总瓦片数: ", status.total_tiles)

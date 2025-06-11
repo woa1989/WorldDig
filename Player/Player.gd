@@ -1,638 +1,209 @@
 extends CharacterBody2D
 
-# 玩家控制脚本
-# 处理移动、跳跃、挖掘等操作
+# 主玩家控制器 - 清理重构版本
+# 使用模块化系统，移除重复逻辑
 
+# 节点引用
 @onready var animated_sprite = $AnimatedSprite2D
 @onready var collision_shape = $CollisionShape2D
-@onready var down_attack_area = $DownAttackArea
-@onready var down_attack_debug_visual = $DownAttackArea/DebugVisual
 @onready var point_light = $PointLight2D
-@onready var hit_box = $HitBox
 @onready var health_bar = $HealthBar
+@onready var hit_box = $HitBox
+@onready var down_attack_area = $DownAttackArea
 
-# 游戏模式检测
+# 子系统模块
+var player_health: PlayerHealth
+var player_movement: PlayerMovement
+var player_combat: PlayerCombat
+var player_dig: PlayerDig
+
+# 游戏模式
 var is_rpg_mode = false
 
-# 血量系统
-var max_health = 3
-var current_health = 3
-var health_bar_show_timer = 0.0
-var health_bar_show_duration = 3.0 # 血条显示3秒后隐藏
-
-# 移动相关
-var speed = 345.6 # 在288.0基础上增加20% (288.0 * 1.2)
-var jump_velocity = -540.0 # 在-450.0基础上增加20% (-450.0 * 1.2)
-var gravity = 1200.0
-
-# 二段跳相关
-var max_jumps = 1
-var current_jumps = 0
-var coyote_time = 0.05
-var coyote_timer = 0.0
-
-# 墙跳相关
-var wall_jump_velocity = Vector2(200.0, -500.0) # 墙跳的水平和垂直速度
-var wall_slide_speed = 100.0 # 贴墙滑行速度
-var wall_jump_time = 0.2 # 墙跳后的控制延迟时间
-var wall_jump_timer = 0.0 # 墙跳计时器
-
-
-# 挖掘相关
-var dig_range = 128.0
-var dig_timer = 0.0
-var dig_cooldown = 0.3
-var is_dig_animation_playing = false # 新增：防止动画播放期间的重复挖掘输入
-
-# 状态
-var is_digging = false
-var facing_direction = 1 # 1为右，-1为左
-var is_wall_sliding = false
-var is_wall_jumping = false
-var wall_direction = 0 # 墙壁方向：1为右墙，-1为左墙，0为无墙
-var can_down_attack = false # 是否可以使用下砸攻击（只有主动跳跃后才能使用）
-
-var is_defending = false # 是否正在防御
-var is_parrying = false # 是否正在弹反
-var parry_window_duration = 1000 # 弹反窗口持续时间(毫秒) - 按下防御键后1秒内
-var parry_timer = 0 # 弹反计时器
-
-# 下砸攻击相关属性
-var is_down_attacking = false # 是否正在下砸攻击
-var down_attack_velocity = 600.0 # 下砸攻击速度（减少50%）
-var bounce_velocity = -648.0 # 反弹速度（比普通跳跃快20%）
-var bounce_gravity_reduction_time = 0.15 # 反弹后重力减免时间
-var bounce_gravity_factor = 0.3 # 反弹期间重力系数
-var is_bouncing = false # 是否正在反弹状态
-var bounce_timer = 0.0 # 反弹计时器
-
-# 下砸攻击反弹配置（可在编辑器中调整）
-@export var bounce_strength = 648.0 # 反弹强度（比普通跳跃快20%：540 * 1.2 = 648）
-@export var bounce_gravity_reduction = 0.15 # 反弹后重力减免时间（秒）
-@export var bounce_gravity_multiplier = 0.3 # 反弹期间重力系数
-
-# 攻击和防御相关
-var attack_damage = 1 # 攻击伤害
-var is_attacking = false # 是否正在攻击
-var is_invulnerable = false # 无敌状态
-var invulnerability_timer = 0 # 无敌时间计时器
-var invulnerability_duration = 600 # 受伤后无敌时间(毫秒)
-
 func _ready():
-	# 检测游戏模式 - 通过场景路径或父节点名称判断
+	setup_game_mode()
+	setup_modules()
+	setup_connections()
+
+func _physics_process(_delta):
+	handle_unified_input()
+
+func setup_game_mode():
+	"""设置游戏模式"""
 	var scene_tree = get_tree()
 	if scene_tree and scene_tree.current_scene:
 		var scene_name = scene_tree.current_scene.name
 		var scene_path = scene_tree.current_scene.scene_file_path
 		
-		# 更精确的模式检测
 		is_rpg_mode = (scene_name == "Game" or
 					   scene_path.contains("RPG") or
 					   scene_name.to_lower().contains("rpg"))
 		
 		print("[DEBUG] 场景名称: ", scene_name)
-		print("[DEBUG] 场景路径: ", scene_path)
 		print("[DEBUG] 检测到游戏模式: ", "RPG模式" if is_rpg_mode else "挖掘模式")
 	
-	# 在RPG模式下禁用火把照明
+	# RPG模式下禁用火把照明
 	if is_rpg_mode and point_light:
 		point_light.visible = false
 		point_light.enabled = false
 		print("[DEBUG] RPG模式：已禁用火把照明")
 	else:
-		# 挖掘模式下确保火把照明启用
 		if point_light:
 			point_light.visible = true
 			point_light.enabled = true
 			print("[DEBUG] 挖掘模式：已启用火把照明")
-	
-	# 设置初始动画
-	if animated_sprite:
-		animated_sprite.play("Idle")
-		print("[DEBUG] Player _ready: 动画精灵已设置为Idle")
-		
-		# 检查动画资源
-		if animated_sprite.sprite_frames:
-			print("[DEBUG] SpriteFrames 资源已加载")
-			if animated_sprite.sprite_frames.has_animation("Dig"):
-				var dig_frame_count = animated_sprite.sprite_frames.get_frame_count("Dig")
-				print("[DEBUG] Dig 动画包含 ", dig_frame_count, " 帧")
-			else:
-				print("[DEBUG] 警告: 没有找到 'Dig' 动画")
-		else:
-			print("[DEBUG] 错误: SpriteFrames 资源未加载")
-	else:
-		print("[DEBUG] 错误: AnimatedSprite2D 节点未找到")
-	
-	# 应用可配置的反弹参数
-	bounce_velocity = - bounce_strength
-	bounce_gravity_reduction_time = bounce_gravity_reduction
-	bounce_gravity_factor = bounce_gravity_multiplier
-	
-	# 连接下砸攻击区域信号
-	if down_attack_area:
-		down_attack_area.body_entered.connect(_on_down_attack_area_body_entered)
-		down_attack_area.area_entered.connect(_on_down_attack_area_area_entered)
-	
-	# 连接HitBox为攻击区域（两种模式都支持）
-	if hit_box:
-		hit_box.body_entered.connect(_on_attack_area_body_entered)
-		hit_box.monitoring = false # 默认关闭，攻击时开启
-		# 设置初始攻击盒子位置
-		update_hitbox_position()
-		print("[DEBUG] HitBox攻击区域已设置（支持两种模式）")
-	
-	# 初始化血条
-	if health_bar:
-		health_bar.visible = false
-		update_health_bar()
-	
-	# 确保玩家可见
-	visible = true
-	modulate = Color.WHITE
-	
 
-func _physics_process(delta):
-	if coyote_timer > 0:
-		coyote_timer -= delta
+func setup_modules():
+	"""设置子模块"""
+	# 创建健康模块
+	player_health = PlayerHealth.new()
+	player_health.name = "PlayerHealth"
+	add_child(player_health)
 	
-	if wall_jump_timer > 0:
-		wall_jump_timer -= delta
+	# 创建移动模块
+	player_movement = PlayerMovement.new()
+	player_movement.name = "PlayerMovement"
+	add_child(player_movement)
 	
-	# 处理反弹计时器
-	if is_bouncing and bounce_timer > 0:
-		bounce_timer -= delta
-		if bounce_timer <= 0:
-			is_bouncing = false
+	# 创建战斗模块
+	player_combat = PlayerCombat.new()
+	player_combat.name = "PlayerCombat"
+	add_child(player_combat)
 	
-	# 处理血条显示逻辑：血量不足时持续显示，满血时隐藏
-	if health_bar:
-		if current_health < max_health:
-			health_bar.visible = true
-		else:
-			health_bar.visible = false
-	
-	# 墙壁检测
-	detect_wall()
-	
-	# 统一输入处理
-	handle_input(delta)
-	
-	# 重置跳跃次数和土狼时间
-	if is_on_floor():
-		current_jumps = 0
-		coyote_timer = coyote_time
-		is_wall_sliding = false
-		is_wall_jumping = false
-		can_down_attack = false # 落地后重置下砸攻击能力
-	elif was_on_floor() and coyote_timer <= 0:
-		# 刚离开地面，开始土狼时间
-		coyote_timer = coyote_time
-	
-	# 重力处理（增强版本，支持反弹重力减免）
-	if not is_on_floor():
-		var gravity_factor = 1.0
-		if is_bouncing:
-			gravity_factor = bounce_gravity_factor
-		
-		if is_wall_sliding:
-			# 贴墙滑行时的重力减缓，限制下降速度
-			velocity.y += gravity * delta * 0.3 * gravity_factor
-			if velocity.y > wall_slide_speed:
-				velocity.y = wall_slide_speed
-		else:
-			velocity.y += gravity * delta * gravity_factor
-	
-	# 跳跃处理
-	handle_jumping()
-	
-	# 移动处理 - 在弹反和下砸攻击时不允许移动
-	if not is_parrying and not is_down_attacking:
-		handle_movement()
-	
-	move_and_slide()
-	
-	# 动画处理 - 在move_and_slide()之后检查实际移动速度
-	update_animations()
+	# 创建挖掘模块
+	player_dig = PlayerDig.new()
+	player_dig.name = "PlayerDig"
+	add_child(player_dig)
 
-func handle_jumping():
-	"""处理跳跃逻辑"""
-	if Input.is_action_just_pressed("jump"):
-		# 墙跳优先级最高
-		if is_wall_sliding and wall_direction != 0:
-			# 墙跳：向墙的反方向跳跃
-			velocity.x = - wall_direction * wall_jump_velocity.x
-			velocity.y = wall_jump_velocity.y
-			is_wall_jumping = true
-			is_wall_sliding = false
-			wall_jump_timer = wall_jump_time
-			current_jumps = 1
-			can_down_attack = true # 墙跳后可以使用下砸攻击
-			play_anim("jump")
-		# 普通跳跃
-		elif is_on_floor() or coyote_timer > 0:
-			# 第一段跳跃
-			velocity.y = jump_velocity
-			current_jumps = 1
-			coyote_timer = 0
-			can_down_attack = true # 主动跳跃后可以使用下砸攻击
-			play_anim("jump")
-		elif current_jumps < max_jumps:
-			# 二段跳
-			velocity.y = jump_velocity * 0.8
-			current_jumps += 1
-			can_down_attack = true # 二段跳后可以使用下砸攻击
-			play_anim("jump")
+func setup_connections():
+	"""设置信号连接"""
+	if player_health:
+		player_health.health_changed.connect(_on_health_changed)
+		player_health.died.connect(_on_player_died)
 	
-func handle_movement():
-	"""处理水平移动"""
-	var direction = Input.get_axis("left", "right")
+	if player_movement:
+		player_movement.movement_state_changed.connect(_on_movement_state_changed)
 	
-	# 墙跳期间限制玩家控制
-	if is_wall_jumping and wall_jump_timer > 0:
-		# 墙跳期间减少玩家的水平控制力
-		if direction != 0:
-			velocity.x = move_toward(velocity.x, direction * speed, speed * 0.05)
-		return
+	if player_combat:
+		player_combat.attack_performed.connect(_on_attack_performed)
+		player_combat.parry_triggered.connect(_on_parry_triggered)
 	
-	# 正常移动
-	if direction != 0:
-		# 应用移动速度
-		velocity.x = move_toward(velocity.x, direction * speed, speed * 0.2)
-		
-		# 更新面向方向
-		if not is_wall_sliding:
-			var old_direction = facing_direction
-			facing_direction = direction
-			# 如果方向改变，更新攻击盒子位置
-			if old_direction != facing_direction:
-				update_hitbox_position()
-		
-		# 翻转精灵
-		if animated_sprite:
-			animated_sprite.flip_h = (facing_direction < 0)
-	else:
-		# 没有输入时减速
-		if is_wall_sliding:
-			# 贴墙时保持少量水平速度
-			velocity.x = move_toward(velocity.x, wall_direction * 50, speed * 0.1)
-		else:
-			velocity.x = move_toward(velocity.x, 0, speed * 0.1)
+	if player_dig:
+		player_dig.dig_performed.connect(_on_dig_performed)
 
-func update_animations():
-	"""更新玩家动画 - 基于实际移动速度"""
-	# 动画处理 - 基于实际移动速度而不是输入
-	if is_on_floor() and not is_digging and not is_wall_sliding:
-		# 检查玩家是否真的在移动（速度阈值）
-		if abs(velocity.x) > 50.0: # 如果水平速度大于阈值，播放走路动画
-			if animated_sprite and animated_sprite.animation != "Walk":
-				animated_sprite.play("Walk")
-		else: # 如果基本静止，播放空闲动画
-			if animated_sprite and animated_sprite.animation != "Idle":
-				animated_sprite.play("Idle")
-	
-	# 爬墙动画
-	if is_wall_sliding and animated_sprite:
-		if animated_sprite.animation != "Wall_Slide":
-			# 如果没有专门的爬墙动画，可以使用Idle或创建一个
-			animated_sprite.play("Idle")
-
-func was_on_floor() -> bool:
-	"""检查上一帧是否在地面（简化实现）"""
-	return coyote_timer > 0
-
-func detect_wall():
-	"""检测墙壁并设置墙滑状态"""
-	# 重置墙壁状态
-	wall_direction = 0
-	var was_wall_sliding = is_wall_sliding
-	is_wall_sliding = false
-	
-	# 只有在空中时才能贴墙
-	if is_on_floor():
-		return
-	
-	# 检测左墙
-	if is_on_wall_only() and velocity.y > 0:
-		var direction = Input.get_axis("left", "right")
-		
-		# 检查玩家是否在向墙的方向移动或按住方向键
-		if direction < 0 and check_wall_collision(-1):
-			# 左墙
-			wall_direction = -1
-			is_wall_sliding = true
-		elif direction > 0 and check_wall_collision(1):
-			# 右墙
-			wall_direction = 1
-			is_wall_sliding = true
-	
-	# 调试输出
-	if is_wall_sliding and not was_wall_sliding:
-		print("开始贴墙滑行，墙壁方向：", wall_direction)
-	elif not is_wall_sliding and was_wall_sliding:
-		print("结束贴墙滑行")
-
-func check_wall_collision(direction: int) -> bool:
-	"""检查指定方向是否有墙壁碰撞"""
-	# 使用射线检测或形状查询来检测墙壁
-	var space_state = get_world_2d().direct_space_state
-	var query = PhysicsRayQueryParameters2D.create(
-		global_position,
-		global_position + Vector2(direction * 20, 0)
-	)
-	query.exclude = [self]
-	
-	var result = space_state.intersect_ray(query)
-	return result != null
-
-func handle_digging(_delta):
-	print("[DEBUG] handle_digging 被调用")
-	print("[DEBUG] dig_timer: ", dig_timer, ", is_digging: ", is_digging, ", is_dig_animation_playing: ", is_dig_animation_playing)
-	
-	# 多重检查：冷却时间、挖掘状态和动画播放状态
-	if dig_timer > 0 or is_digging or is_dig_animation_playing:
-		print("[DEBUG] 挖掘被阻止 - dig_timer: ", dig_timer, ", is_digging: ", is_digging, ", is_dig_animation_playing: ", is_dig_animation_playing)
-		return
-		
-	var dig_direction = Vector2.ZERO
-	
-	# 检测方向键输入，只允许4个基本方向挖掘
-	if Input.is_action_pressed("up"):
-		dig_direction = Vector2(0, -1)
-	elif Input.is_action_pressed("down"):
-		dig_direction = Vector2(0, 1)
-	elif Input.is_action_pressed("left"):
-		dig_direction = Vector2(-1, 0)
-	elif Input.is_action_pressed("right"):
-		dig_direction = Vector2(1, 0)
-	else:
-		# 没有方向键时，根据玩家朝向挖掘
-		dig_direction = Vector2(facing_direction, 0)
-	
-	# 先播放挖掘动画，动画结束后再销毁瓦片
-	if animated_sprite and not is_digging and not is_dig_animation_playing:
-		print("[DEBUG] 开始播放挖掘动画")
-		is_digging = true
-		is_dig_animation_playing = true
-		play_anim("Dig")
-		if dig_direction.x != 0:
-			animated_sprite.flip_h = dig_direction.x < 0
-		
-		print("[DEBUG] 开始挖掘动画 - 方向: ", dig_direction)
-		print("[DEBUG] 当前动画: ", animated_sprite.animation if animated_sprite else "null")
-		print("[DEBUG] 动画长度: ", animated_sprite.sprite_frames.get_frame_count("Dig") if animated_sprite and animated_sprite.sprite_frames else "unknown")
-		
-		# 保存挖掘信息，在动画结束后执行实际挖掘
-		var dig_info = {
-			"direction": dig_direction,
-			"position": global_position
-		}
-		
-		# 设置挖掘冷却时间
-		dig_timer = dig_cooldown
-		
-		# 断开之前可能存在的连接（防止内存泄漏）
-		if animated_sprite.animation_finished.is_connected(_on_dig_animation_complete):
-			print("[DEBUG] 断开之前的动画信号连接")
-			animated_sprite.animation_finished.disconnect(_on_dig_animation_complete)
-		
-		# 使用动画完成信号而不是固定计时器
-		print("[DEBUG] 连接动画完成信号")
-		print("[DEBUG] 动画是否正在播放: ", animated_sprite.is_playing())
-		animated_sprite.animation_finished.connect(_on_dig_animation_complete.bind(dig_info), CONNECT_ONE_SHOT)
-		print("[DEBUG] 信号连接完成")
-		
-		# 添加后备计时器，以防动画信号失败
-		var backup_timer = get_tree().create_timer(1.0) # 1秒后备时间
-		backup_timer.timeout.connect(_on_dig_backup_timeout.bind(dig_info), CONNECT_ONE_SHOT)
-		print("[DEBUG] 后备计时器已设置")
-	else:
-		print("[DEBUG] 无法播放挖掘动画 - animated_sprite: ", animated_sprite != null, ", is_digging: ", is_digging, ", is_dig_animation_playing: ", is_dig_animation_playing)
-
-
-# 后备超时处理函数，以防动画信号失败
-func _on_dig_backup_timeout(dig_info: Dictionary):
-	"""当动画信号失败时的后备处理函数"""
-	if is_digging or is_dig_animation_playing:
-		print("[DEBUG] 后备计时器触发，强制完成挖掘动画")
-		_on_dig_animation_complete(dig_info)
-	else:
-		print("[DEBUG] 后备计时器触发，但动画已正常完成")
-
-
-func perform_directional_dig(direction: Vector2):
-	# tile_size = dig_range
-	var tile_size = dig_range
-	var player_grid = (global_position / tile_size).floor()
-	var target_grid = player_grid + direction
-	var dig_position = (target_grid + Vector2(0.5, 0.5)) * tile_size
-	if not try_dig_nearby(dig_position):
-		print("无法在此方向及附近挖掘")
-
-func perform_forward_dig():
-	# 向前挖掘
-	var dig_position = global_position + Vector2(facing_direction * dig_range, 0)
-	if not try_dig_nearby(dig_position):
-		print("无法在前方及附近挖掘")
-
-func attempt_dig(world_position):
-	# 兼容旧接口，直接用新工具函数
-	if not try_dig_nearby(world_position):
-		print("无法在此处及附近挖掘")
-
-func _on_dig_animation_finished():
-	# 挖掘动画结束
-	is_digging = false
-	if is_on_floor():
-		if velocity.x != 0:
-			play_anim("Walk")
-		else:
-			play_anim("Idle")
-
-# 新的动画完成信号处理函数
-func _on_dig_animation_complete(dig_info: Dictionary):
-	"""当挖掘动画完成时调用，执行实际的挖掘操作"""
-	print("[DEBUG] 挖掘动画完成，执行实际挖掘操作")
-	print("[DEBUG] 挖掘方向: ", dig_info.direction)
-	print("[DEBUG] 挖掘位置: ", dig_info.position)
-	
-	# 只有在仍然处于挖掘状态时才执行挖掘操作
-	if is_digging or is_dig_animation_playing:
-		# 执行实际的挖掘操作
-		perform_directional_dig(dig_info.direction)
-		
-		# 重置所有挖掘相关状态
-		is_digging = false
-		is_dig_animation_playing = false
-		
-		print("[DEBUG] 状态重置完成 - is_digging: ", is_digging, ", is_dig_animation_playing: ", is_dig_animation_playing)
-		
-		# 恢复动画
-		if is_on_floor():
-			if abs(velocity.x) > 50.0:
-				play_anim("Walk")
-			else:
-				play_anim("Idle")
-		
-		print("[DEBUG] 挖掘完成，状态已重置")
-	else:
-		print("[DEBUG] 动画完成信号被调用，但状态已被重置")
-
-# 受到伤害 - 处理弹反、防御和伤害逻辑
-func take_damage(damage, attacker = null) -> bool:
-	print("[DEBUG] 玩家受到攻击 - 伤害: ", damage, ", 攻击者: ", attacker)
-	print("[DEBUG] 当前状态 - 弹反: ", is_parrying, ", 防御: ", is_defending, ", 无敌: ", is_invulnerable)
-	print("[DEBUG] 弹反计时器: ", parry_timer, "ms")
-	
-	# 如果正在弹反，反弹伤害
-	if is_parrying:
-		print("[DEBUG] ⚡ 弹反状态中！反弹攻击")
-		reflect_attack(damage, attacker)
-		return true # 返回 true 表示成功格挡
-	
-	# 如果正在防御且在弹反窗口内，触发弹反
-	if is_defending and parry_timer <= parry_window_duration:
-		print("[DEBUG] ⚡ 完美弹反！触发反弹")
-		parry() # 激活弹反状态
-		reflect_attack(damage, attacker)
-		return true # 返回 true 表示成功格挡
-	
-	# 如果处于无敌状态，不受伤害
-	if is_invulnerable:
-		print("[DEBUG] 💫 无敌状态，免疫伤害")
-		return false # 返回 false 表示未受伤害但也未格挡
-	
-	# 应用伤害
-	var game_manager = get_node("/root/GameManager")
-	if game_manager:
-		game_manager.damage_player(damage)
-	
-	# 更新本地血量并显示血条
-	current_health = game_manager.player_health
-	update_health_bar()
-	show_health_bar()
-
-	
-	# 设置短暂无敌时间
-	is_invulnerable = true
-	invulnerability_timer = 0
-	
-	# 播放受伤动画
-	if animated_sprite:
-		play_anim("Hurt")
-		# 安全地连接信号，避免重复连接
-		if not animated_sprite.animation_finished.is_connected(_on_hurt_animation_finished):
-			animated_sprite.animation_finished.connect(_on_hurt_animation_finished, CONNECT_ONE_SHOT)
-	
-	return false # 返回 false 表示受到了伤害
-
-func _on_hurt_animation_finished():
-	# 受伤动画结束，返回正常状态
-	if is_on_floor():
-		if velocity.x != 0:
-			play_anim("Walk")
-		else:
-			play_anim("Idle")
-
-func die():
-	# 死亡
-	if animated_sprite:
-		play_anim("Dying")
-		# 禁用控制
-		set_physics_process(false)
-
-
-# 新增：动画切换统一方法
-func play_anim(anim_name: String):
-	if animated_sprite and animated_sprite.animation != anim_name:
-		animated_sprite.play(anim_name)
-
-# 血条相关函数
-func update_health_bar():
-	if health_bar:
-		# HealthBar.tscn的根节点就是ProgressBar
-		health_bar.max_value = max_health
-		health_bar.value = current_health
-		# 设置血条为红色
-		var style_box = StyleBoxFlat.new()
-		style_box.bg_color = Color.RED
-		health_bar.add_theme_stylebox_override("fill", style_box)
-
-func show_health_bar():
-	# 血条显示逻辑已移至_physics_process中统一处理
-	# 这个函数保留用于兼容性，但实际显示逻辑由血量状态决定
-	pass
-
-# 新增：统一输入处理
-func handle_input(delta):
-	# ===== 统一的下砸攻击处理（两种模式都支持） =====
-	# 下砸攻击：在空中状态下按下+dig键触发
-	if Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and not is_on_floor() and not is_down_attacking and not is_attacking and can_down_attack:
+func handle_unified_input():
+	"""统一输入处理"""
+	# 下砸攻击（两种模式都支持）
+	if (Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and
+		not is_on_floor() and player_movement and player_movement.can_down_attack and
+		not player_movement.is_down_attacking and not player_combat.is_attacking):
 		print("[DEBUG] 触发下砸攻击 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
-		start_down_attack()
-	# 检查是否停止下砸攻击（松开下键或dig键）
-	elif is_down_attacking and (not Input.is_action_pressed("down") or not Input.is_action_pressed("dig")):
-		end_down_attack()
+		player_movement.start_down_attack()
+		player_combat.is_attacking = true
+		
+	elif (player_movement and player_movement.is_down_attacking and
+		  (not Input.is_action_pressed("down") or not Input.is_action_pressed("dig"))):
+		player_movement.end_down_attack()
+		player_combat.is_attacking = false
 	
-	# ===== 模式特定的输入处理 =====
+	# 模式特定输入
 	elif is_rpg_mode:
-		# RPG模式：dig键作为攻击键
-		if Input.is_action_just_pressed("dig") and not is_attacking and not is_defending:
-			print("[DEBUG] RPG模式攻击输入")
-			perform_attack()
+		handle_rpg_input()
 	else:
-		# 挖掘模式：dig键作为挖掘键或近战攻击键
-		if Input.is_action_just_pressed("dig"):
-			# 如果在地面上且没有按方向键，执行近战攻击
-			if is_on_floor() and not (Input.is_action_pressed("up") or Input.is_action_pressed("down") or
-									  Input.is_action_pressed("left") or Input.is_action_pressed("right")) and not is_attacking:
-				print("[DEBUG] 挖掘模式地面近战攻击")
-				perform_melee_attack()
-			else:
-				print("[DEBUG] 挖掘模式，调用 handle_digging")
-				handle_digging(delta)
-		else:
-			# 更新挖掘计时器
-			if dig_timer > 0:
-				dig_timer -= delta
+		handle_dig_input()
 	
-	# ===== 通用防御系统（两种模式都支持） =====
-	# 防御输入 (K键)
-	if Input.is_action_just_pressed("defend") and not is_attacking:
-		print("[DEBUG] 开始防御 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
-		start_unified_defend()
-	
-	# 防御释放
-	if Input.is_action_just_released("defend"):
-		print("[DEBUG] 结束防御 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
-		end_unified_defend()
-	
-	# ===== 通用状态更新（两种模式都需要） =====
-	
-	# 更新弹反计时器
-	if is_defending:
-		parry_timer += delta * 1000 # 转换为毫秒
-		# 检查弹反窗口是否结束
-		if parry_timer >= parry_window_duration:
-			is_defending = false
-			parry_timer = 0
-	
-	# 更新无敌时间
-	if is_invulnerable:
-		invulnerability_timer += delta * 1000
-		if invulnerability_timer >= invulnerability_duration:
-			is_invulnerable = false
-			invulnerability_timer = 0
-			# 恢复正常显示
-			set_shader_blink_intensity(0.0)
-		else:
-			# 闪烁效果
-			if int(invulnerability_timer / 100) % 2 == 0:
-				set_shader_blink_intensity(0.8)
-			else:
-				set_shader_blink_intensity(0.0)
+	# 通用防御系统
+	if player_combat:
+		player_combat.handle_combat_input()
 
-# 工具函数：生成周围8格偏移
+func handle_rpg_input():
+	"""RPG模式输入"""
+	if Input.is_action_just_pressed("dig") and player_combat and not player_combat.is_attacking and not player_combat.is_defending:
+		print("[DEBUG] RPG模式攻击输入")
+		player_combat.perform_attack()
+
+func handle_dig_input():
+	"""挖掘模式输入"""
+	if Input.is_action_just_pressed("dig"):
+		# 地面近战攻击
+		if (is_on_floor() and not has_direction_input() and
+			player_combat and not player_combat.is_attacking):
+			print("[DEBUG] 挖掘模式地面近战攻击")
+			player_combat.perform_melee_attack()
+		elif player_dig:
+			print("[DEBUG] 挖掘模式，调用挖掘")
+			player_dig.handle_dig_input(get_physics_process_delta_time())
+
+func has_direction_input() -> bool:
+	"""检查是否有方向键输入"""
+	return (Input.is_action_pressed("up") or Input.is_action_pressed("down") or
+			Input.is_action_pressed("left") or Input.is_action_pressed("right"))
+
+func play_anim(anim_name: String):
+	"""播放动画 - 保护重要动画不被打断"""
+	if not animated_sprite:
+		return
+	
+	# 保护重要动画不被一般动画打断
+	var protected_anims = ["Dig", "Hurt", "Dying"]
+	var current_anim = animated_sprite.animation
+	
+	# 如果当前是保护动画，且要播放的不是同一个动画，则不切换
+	if current_anim in protected_anims and anim_name != current_anim:
+		return
+	
+	# 如果动画相同，不重复播放
+	if current_anim == anim_name:
+		return
+		
+	animated_sprite.play(anim_name)
+
+func take_damage(damage: int, attacker = null) -> bool:
+	"""接受伤害（委托给战斗系统）"""
+	if player_combat:
+		return player_combat.take_damage(damage, attacker)
+	return false
+
+# 信号回调函数
+func _on_health_changed(new_health: int, max_health: int):
+	"""血量变化回调"""
+	print("[DEBUG] 血量变化: ", new_health, "/", max_health)
+
+func _on_player_died():
+	"""玩家死亡回调"""
+	print("[DEBUG] 玩家死亡")
+
+func _on_movement_state_changed(state: String):
+	"""移动状态变化回调"""
+	print("[DEBUG] 移动状态变化: ", state)
+
+func _on_attack_performed():
+	"""攻击执行回调"""
+	print("[DEBUG] 攻击执行")
+
+func _on_parry_triggered():
+	"""弹反触发回调"""
+	print("[DEBUG] 弹反触发")
+
+func _on_dig_performed(dig_position: Vector2):
+	"""挖掘执行回调"""
+	print("[DEBUG] 挖掘执行，位置: ", dig_position)
+
+# 兼容性方法（保持与现有代码的兼容）
+func get_facing_direction() -> int:
+	"""获取面向方向"""
+	return player_movement.facing_direction if player_movement else 1
+
+func get_current_health() -> int:
+	"""获取当前血量"""
+	return player_health.current_health if player_health else 0
+
+func heal(amount: int):
+	"""治疗"""
+	if player_health:
+		player_health.heal(amount)
+
+# 兼容旧版本的方法
 func get_surrounding_offsets() -> Array:
 	return [
 		Vector2(0, 0), Vector2(1, 0), Vector2(-1, 0),
@@ -641,400 +212,9 @@ func get_surrounding_offsets() -> Array:
 		Vector2(1, -1), Vector2(-1, -1)
 	]
 
-# 工具函数：尝试在当前位置及周围8格执行操作
-func try_action_nearby(base_pos: Vector2, offsets: Array, func_name: String) -> bool:
-	for offset in offsets:
-		if call(func_name, base_pos + offset):
-			return true
-	return false
-
-# 挖掘：尝试当前位置及周围8格
 func try_dig_nearby(world_position: Vector2) -> bool:
 	for offset in get_surrounding_offsets():
 		var mine_scene = get_parent()
 		if mine_scene and mine_scene.has_method("dig_at_position") and mine_scene.dig_at_position(world_position + offset):
 			return true
 	return false
-
-# ========================= 统一防御系统 =========================
-
-# 统一防御函数 - 适用于两种模式
-func start_unified_defend():
-	"""开始防御状态，激活1秒弹反窗口"""
-	is_defending = true
-	parry_timer = 0 # 重置弹反计时器
-	print("[DEBUG] 开始防御 - 激活1秒弹反窗口 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
-
-# 统一防御释放函数
-func end_unified_defend():
-	"""结束防御状态"""
-	print("[DEBUG] 手动释放防御 - 弹反计时器: ", parry_timer, "ms - 模式: ", "RPG" if is_rpg_mode else "挖掘")
-	is_defending = false
-	parry_timer = 0
-
-# ========================= 防御系统 =========================
-
-# 防御函数 - 开始防御状态，激活1秒弹反窗口
-func parry():
-	is_defending = false
-	is_parrying = true
-	parry_timer = 0
-	print("[DEBUG] 🛡️ 弹反状态激活，持续0.3秒")
-	
-	# 播放弹反效果
-	# 可以添加弹反动画或特效
-	# ...
-	
-	# 弹反结束后恢复状态
-	await get_tree().create_timer(0.3).timeout
-	is_parrying = false
-	print("[DEBUG] 弹反状态结束")
-
-# 反弹攻击函数 - 处理远程和近战攻击的反弹
-func reflect_attack(damage, attacker = null):
-	print("[DEBUG] 🔄 开始处理攻击反弹")
-	
-	# 检查攻击者类型
-	if attacker == null:
-		print("[DEBUG] 无攻击者信息，无法反弹")
-		return
-	
-	# 判断是否为子弹（远程攻击）
-	if attacker.get_script() and attacker.get_script().get_path().ends_with("bullet.gd"):
-		# 远程攻击：反弹子弹
-		print("[DEBUG] 🏹 检测到远程攻击（子弹），执行子弹反弹")
-		reflect_bullet(attacker)
-	else:
-		# 近战攻击：直接对攻击者造成伤害
-		print("[DEBUG] ⚔️ 检测到近战攻击，直接反弹伤害")
-		if attacker.has_method("take_damage"):
-			attacker.take_damage(damage) # 反弹伤害
-		else:
-			print("[DEBUG] 攻击者无法接受反弹伤害")
-
-# 反弹子弹函数 - 将子弹原路返回并重置射程
-func reflect_bullet(bullet):
-	print("[DEBUG] 🔄 开始反弹子弹")
-	
-	# 检查子弹是否有速度信息
-	if bullet.has_meta("velocity"):
-		# 反转子弹速度方向
-		var original_velocity = bullet.get_meta("velocity")
-		var reflected_velocity = - original_velocity
-		bullet.set_meta("velocity", reflected_velocity)
-		print("[DEBUG] 子弹速度已反转: ", original_velocity, " -> ", reflected_velocity)
-		
-		# 修改子弹的伤害目标（让子弹能伤害敌人而不是玩家）
-		bullet.set_meta("reflected", true)
-		print("[DEBUG] 子弹已标记为反弹状态")
-		
-		# 重置子弹的生命周期计时器，恢复完整射程
-		reset_bullet_lifetime(bullet)
-	else:
-		print("[DEBUG] 子弹没有速度信息，无法反弹")
-
-# 重置子弹生命周期计时器
-func reset_bullet_lifetime(bullet):
-	# 查找子弹的计时器并重置
-	for child in bullet.get_children():
-		if child is Timer:
-			# 使用与gun.gd相同的参数重新计算子弹生命周期
-			# 这样确保反弹后的子弹有完整的射程
-			const BULLET_VELOCITY = 850.0
-			const BULLET_RANGE = 500.0
-			var bullet_lifetime = BULLET_RANGE / BULLET_VELOCITY
-			
-			# 重置计时器
-			child.stop()
-			child.wait_time = bullet_lifetime
-			child.start()
-			print("[DEBUG] 子弹生命周期已重置，新射程: ", BULLET_RANGE, ", 生命周期: ", bullet_lifetime)
-			break
-
-# ========================= 下砸攻击系统 =========================
-
-# 开始下砸攻击
-func start_down_attack():
-	"""开始下砸攻击 - 玩家快速向下移动并攻击 - 增强调试版本"""
-	print("[DEBUG] 🔨 ===== 开始下砸攻击 =====")
-	print("[DEBUG] 🔨 当前位置: ", global_position)
-	print("[DEBUG] 🔨 当前速度: ", velocity)
-	print("[DEBUG] 🔨 是否在地面: ", is_on_floor())
-	
-	# 防止重复激活
-	if is_down_attacking:
-		print("[DEBUG] 🚫 下砸攻击已在进行中，忽略重复请求")
-		return
-		
-	is_down_attacking = true
-	is_attacking = true
-	print("[DEBUG] 🔨 下砸攻击状态已激活")
-	
-	# 设置向下的高速度
-	var old_velocity = velocity
-	velocity.y = down_attack_velocity
-	velocity.x = 0 # 停止水平移动
-	print("[DEBUG] 🔨 速度变化: ", old_velocity, " -> ", velocity)
-	
-	# 播放下砸攻击动画
-	if animated_sprite:
-		animated_sprite.play("Dig") # 使用挖掘动画作为下砸攻击动画
-		print("[DEBUG] 🔨 播放下砸攻击动画")
-	
-	# 激活预创建的下砸攻击区域
-	if down_attack_area:
-		down_attack_area.monitoring = true
-		print("[DEBUG] 🔨 下砸攻击区域已激活，monitoring = ", down_attack_area.monitoring)
-		print("[DEBUG] 🔨 攻击区域位置: ", down_attack_area.global_position)
-		print("[DEBUG] 🔨 攻击区域碰撞层: ", down_attack_area.collision_layer)
-		print("[DEBUG] 🔨 攻击区域碰撞掩码: ", down_attack_area.collision_mask)
-	else:
-		print("[DEBUG] ❌ 错误：找不到下砸攻击区域！")
-	
-	print("[DEBUG] 🔨 ===== 下砸攻击开始完成 =====")
-	
-
-func _on_down_attack_area_body_entered(body):
-	"""下砸攻击区域检测到碰撞体 - 支持两种模式"""
-	print("[DEBUG] 🔨 下砸攻击检测到碰撞体: ", body.name, ", 类型: ", body.get_class())
-	print("[DEBUG] 🔨 当前模式: ", "RPG" if is_rpg_mode else "挖掘")
-	print("[DEBUG] 🔨 当前下砸攻击状态: ", is_down_attacking)
-	print("[DEBUG] 🔨 当前玩家速度: ", velocity)
-	print("[DEBUG] 🔨 玩家位置: ", global_position)
-	print("[DEBUG] 🔨 碰撞体位置: ", body.global_position if body.has_method("get_global_position") else "N/A")
-	
-	if not is_down_attacking:
-		print("[DEBUG] 🚫 不在下砸攻击状态，忽略碰撞")
-		return
-	
-	var should_bounce = false
-	
-	# 如果击中敌人（两种模式都支持）
-	if body.has_method("take_damage") and body != self:
-		print("[DEBUG] 🔨 下砸攻击击中敌人！造成伤害: ", attack_damage)
-		body.take_damage(attack_damage, self)
-		should_bounce = true
-	# 如果击中地面、平台或瓦片地图
-	elif (body.is_in_group("ground") or body.is_in_group("platform") or
-		  body.name.to_lower().contains("ground") or body.name.to_lower().contains("floor") or
-		  body.name.to_lower().contains("tile") or body is TileMapLayer or body is TileMap):
-		print("[DEBUG] 🔨 下砸攻击击中地面/瓦片！")
-		
-		if is_rpg_mode:
-			# RPG模式：不进行挖掘，直接反弹
-			print("[DEBUG] ⚔️ RPG模式下砸攻击：不挖掘，直接反弹")
-			should_bounce = true
-		else:
-			# 挖掘模式：尝试挖掘击中位置的土块
-			if perform_down_attack_dig():
-				print("[DEBUG] ⛏️ 挖掘成功，触发反弹")
-				should_bounce = true
-			else:
-				print("[DEBUG] ⛏️ 挖掘失败，仍然触发反弹")
-				# 如果挖掘失败，仍然触发反弹（可能击中不可挖掘的物体）
-				should_bounce = true
-	# 如果是任何静态物体（StaticBody2D）也可以反弹
-	elif body is StaticBody2D:
-		print("[DEBUG] 🔨 下砸攻击击中静态物体！")
-		should_bounce = true
-	else:
-		print("[DEBUG] 🔨 击中未识别物体类型，尝试反弹")
-		should_bounce = true
-	
-	if should_bounce:
-		print("[DEBUG] 🚀 准备触发反弹...")
-		trigger_bounce()
-	else:
-		print("[DEBUG] 🚫 不满足反弹条件")
-
-func _on_down_attack_area_area_entered(area):
-	"""下砸攻击区域检测到其他Area2D"""
-	print("[DEBUG] 下砸攻击检测到区域: ", area.name)
-	# 可以用于检测特殊的可反弹区域
-
-func trigger_bounce():
-	"""触发反弹效果 - 增强版本，包含重力减免"""
-	if not is_down_attacking:
-		print("[DEBUG] 🚫 trigger_bounce被调用但不在下砸攻击状态，忽略")
-		return
-		
-	print("[DEBUG] 🚀 触发增强反弹效果！")
-	print("[DEBUG] 🚀 反弹前速度: ", velocity)
-	
-	# 设置强力向上的反弹速度
-	velocity.y = bounce_velocity
-	print("[DEBUG] 🚀 设置反弹速度: ", bounce_velocity)
-	
-	# 激活反弹状态，减少重力影响
-	is_bouncing = true
-	bounce_timer = bounce_gravity_reduction_time
-	print("[DEBUG] 🚀 激活反弹重力减免，持续时间: ", bounce_gravity_reduction_time, "秒")
-	
-	# 结束当前下砸攻击状态，但保持可以立即再次下砸
-	is_down_attacking = false
-	is_attacking = false
-	# 保持 can_down_attack = true，允许连续下砸攻击（无限弹跳）
-	# can_down_attack 保持为 true，不重置
-	
-	# 使用统一的禁用函数
-	disable_down_attack_area("反弹触发")
-	
-	# 播放反弹动画或效果
-	if animated_sprite:
-		animated_sprite.play("Idle") # 修正：使用正确的动画名称
-	
-	print("[DEBUG] 🚀 反弹后速度: ", velocity)
-	print("[DEBUG] 🚀 反弹完成，玩家可以立即再次下砸攻击实现无限弹跳！")
-
-# 结束下砸攻击
-func end_down_attack():
-	"""结束下砸攻击状态 - 玩家松开按键时调用"""
-	print("[DEBUG] 🔨 结束下砸攻击状态")
-	
-	# 结束下砸攻击状态
-	is_down_attacking = false
-	is_attacking = false
-	
-	# 禁用下砸攻击区域
-	disable_down_attack_area("手动结束")
-
-func disable_down_attack_area(reason: String = "未知原因"):
-	"""统一的下砸攻击区域禁用函数"""
-	if down_attack_area and down_attack_area.monitoring:
-		down_attack_area.set_deferred("monitoring", false)
-		print("[DEBUG] ", reason, "时下砸攻击区域已禁用")
-		
-		# 隐藏调试可视化
-		if down_attack_debug_visual and down_attack_debug_visual.visible:
-			down_attack_debug_visual.set_deferred("visible", false)
-			print("[DEBUG] ", reason, "时下砸攻击调试可视化已隐藏")
-	
-	print("[DEBUG] ", reason, "时下砸攻击区域已通过预创建方式禁用")
-
-# ========================= 统一攻击系统 =========================
-
-# 更新攻击盒子位置函数
-func update_hitbox_position():
-	"""根据玩家朝向更新HitBox位置"""
-	if not hit_box:
-		return
-	
-	# 攻击盒子的基本偏移距离（进一步增加攻击距离）
-	var base_offset_x = 180.0 # 距离玩家中心的水平距离（从120再增加到180，增加50%）
-	var base_offset_y = -10.0 # 距离玩家中心的垂直距离（稍微向下调整，更容易攻击到敌人）
-	
-	# 根据facing_direction调整水平位置
-	var attack_offset = Vector2(base_offset_x * facing_direction, base_offset_y)
-	
-	# 设置HitBox位置
-	hit_box.position = attack_offset
-	
-	print("[DEBUG] 更新HitBox位置 - 朝向: ", facing_direction, ", 新位置: ", hit_box.position)
-
-# RPG模式攻击函数
-func perform_attack():
-	"""在RPG模式下执行攻击"""
-	if not is_rpg_mode or is_attacking:
-		return
-		
-	print("[DEBUG] RPG模式攻击开始，面向方向: ", facing_direction)
-	is_attacking = true
-	
-	# 根据玩家朝向更新攻击盒子位置
-	update_hitbox_position()
-	
-	# 启用攻击区域检测
-	if hit_box:
-		hit_box.monitoring = true
-		print("[DEBUG] HitBox攻击区域已启用，位置: ", hit_box.position, ", collision_mask: ", hit_box.collision_mask)
-	
-	# 播放攻击动画
-	if animated_sprite:
-		animated_sprite.play("Dig") # 使用挖掘动画作为攻击动画
-	
-	# 攻击持续时间
-	await get_tree().create_timer(0.4).timeout
-	
-	# 结束攻击
-	is_attacking = false
-	if hit_box:
-		hit_box.monitoring = false
-	
-	print("[DEBUG] RPG模式攻击结束")
-
-# 挖掘模式近战攻击函数
-func perform_melee_attack():
-	"""在挖掘模式下执行近战攻击"""
-	if is_attacking:
-		return
-		
-	print("[DEBUG] 挖掘模式近战攻击开始，面向方向: ", facing_direction)
-	is_attacking = true
-	
-	# 根据玩家朝向更新攻击盒子位置
-	update_hitbox_position()
-	
-	# 启用攻击区域检测
-	if hit_box:
-		hit_box.monitoring = true
-		print("[DEBUG] HitBox攻击区域已启用，位置: ", hit_box.position, ", collision_mask: ", hit_box.collision_mask)
-	
-	# 播放攻击动画
-	if animated_sprite:
-		animated_sprite.play("Dig") # 使用挖掘动画作为攻击动画
-	
-	# 攻击持续时间
-	await get_tree().create_timer(0.3).timeout # 比RPG模式稍快
-	
-	# 结束攻击
-	is_attacking = false
-	if hit_box:
-		hit_box.monitoring = false
-	
-	print("[DEBUG] 挖掘模式近战攻击结束")
-
-# 攻击区域检测函数（适用于RPG模式和挖掘模式的下砸攻击）
-func _on_attack_area_body_entered(body):
-	"""RPG模式下的攻击区域检测"""
-	print("[DEBUG] HitBox检测到碰撞体: ", body.name, ", 类型: ", body.get_class())
-	print("[DEBUG] 当前模式: ", "RPG" if is_rpg_mode else "挖掘")
-	print("[DEBUG] 是否正在攻击: ", is_attacking)
-	
-	if body == self:
-		print("[DEBUG] 忽略玩家自身")
-		return
-	
-	# 检查是否可以对该物体造成伤害
-	if body.has_method("take_damage"):
-		print("[DEBUG] ⚔️ 对敌人造成伤害: ", attack_damage)
-		var damage_result = body.take_damage(attack_damage, self)
-		print("[DEBUG] 伤害结果: ", damage_result)
-	else:
-		print("[DEBUG] 目标无法受到伤害（没有take_damage方法）")
-		print("[DEBUG] 目标的方法列表: ")
-		for method in body.get_method_list():
-			if method.name.contains("damage") or method.name.contains("hurt") or method.name.contains("health"):
-				print("  - ", method.name)
-
-# ========================= RPG战斗系统 =========================
-
-# ========================= 辅助函数 =========================
-
-func set_shader_blink_intensity(intensity: float):
-	"""设置玩家的Shader的闪烁强度"""
-	if animated_sprite and animated_sprite.material:
-		animated_sprite.material.set_shader_parameter("blink_intensity", intensity)
-
-func perform_down_attack_dig() -> bool:
-	"""下砸攻击时的挖掘功能（在RPG模式下禁用）"""
-	if is_rpg_mode:
-		return false # RPG模式下不进行挖掘
-		
-	# 原有的挖掘逻辑
-	var tile_size = dig_range
-	var player_grid = (global_position / tile_size).floor()
-	var target_grid = player_grid + Vector2(0, 1) # 向下一格
-	var dig_position = (target_grid + Vector2(0.5, 0.5)) * tile_size
-	
-	# 尝试在下砸位置及周围挖掘
-	return try_dig_nearby(dig_position)

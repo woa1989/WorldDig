@@ -1,22 +1,22 @@
-[gd_scene load_steps=5 format=3 uid="uid://ctvcyanguhcyr"]
+[gd_scene load_steps=4 format=3 uid="uid://ctvcyanguhcyr"]
 
-[ext_resource type="Script" uid="uid://tnhnqcuqsraj" path="res://Scenes/LightScene/LightScene.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="1_tmkin"]
-[ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="2_nqmob"]
+[ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="2_3noii"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_3noii"]
 atlas = ExtResource("1_tmkin")
-region = Rect2(2561.85, 0, 120.83, 128)
+region = Rect2(1280, 0, 128, 128)
 
 [node name="LightScene" type="Node2D"]
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = -1
 position = Vector2(1, 1)
 texture = SubResource("AtlasTexture_3noii")
 
 [node name="PointLight2D" type="PointLight2D" parent="."]
-position = Vector2(1, -21)
-energy = 2.0
-texture = ExtResource("2_nqmob")
-texture_scale = 8.0
-script = ExtResource("1_script")
+position = Vector2(1.99997, 4)
+shadow_enabled = true
+shadow_filter = 2
+texture = ExtResource("2_3noii")
+texture_scale = 3.0

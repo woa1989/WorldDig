@@ -1,59 +1,393 @@
-[gd_scene load_steps=9 format=3 uid="uid://dohq2de4550ke"]
+[gd_scene load_steps=32 format=4 uid="uid://dohq2de4550ke"]
 
-[ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="1_gmjs3"]
+[ext_resource type="Shader" uid="uid://cevvcbylyjth8" path="res://Shaders/better_lighting_2d.gdshader" id="1_lighting_shader"]
 [ext_resource type="Texture2D" uid="uid://6m3bwl885e0p" path="res://Assets/mapPack_tilesheet_2X.png" id="2_yq8de"]
 [ext_resource type="Script" uid="uid://cs4yud4jw5666" path="res://Scenes/Level1/Level1.gd" id="3_level1_script"]
-[ext_resource type="PackedScene" uid="uid://cp03xgdlj7yad" path="res://Player/Player.tscn" id="4_teab5"]
+[ext_resource type="Script" uid="uid://c60fqnffps4yq" path="res://Scenes/Level1/simple_player.gd" id="4_simple_player_script"]
+[ext_resource type="Texture2D" uid="uid://nw0iysj0w17f" path="res://Player/Assets/Walking/Walking_000.png" id="5_mxj31"]
+[ext_resource type="Texture2D" uid="uid://cvwlyedt2xcjd" path="res://Player/Assets/Walking/Walking_001.png" id="6_f2dey"]
+[ext_resource type="Texture2D" uid="uid://bijqar8laf7b1" path="res://Player/Assets/Walking/Walking_002.png" id="7_pa2ln"]
+[ext_resource type="Texture2D" uid="uid://crq1ycwnjabt4" path="res://Player/Assets/Walking/Walking_003.png" id="8_pp8ys"]
+[ext_resource type="Texture2D" uid="uid://b5f1a3q182ydu" path="res://Player/Assets/Walking/Walking_004.png" id="9_jbsgw"]
+[ext_resource type="Texture2D" uid="uid://d1v4sayo6gm21" path="res://Player/Assets/Walking/Walking_005.png" id="10_f670y"]
+[ext_resource type="Texture2D" uid="uid://cqexhxkg6n4pa" path="res://Player/Assets/Walking/Walking_006.png" id="11_5e7i2"]
+[ext_resource type="Texture2D" uid="uid://drj1ucxj2sf02" path="res://Player/Assets/Walking/Walking_007.png" id="12_w6s21"]
+[ext_resource type="Texture2D" uid="uid://bv3q8umyuyqe2" path="res://Player/Assets/Walking/Walking_008.png" id="13_00xbt"]
+[ext_resource type="Texture2D" uid="uid://b8d4e1y1gre2m" path="res://Player/Assets/Walking/Walking_009.png" id="14_hlf8a"]
+[ext_resource type="Texture2D" uid="uid://ba7m4kkbi15ji" path="res://Player/Assets/Walking/Walking_010.png" id="15_uhwcv"]
+[ext_resource type="Texture2D" uid="uid://b0a3pqd5knxp1" path="res://Player/Assets/Walking/Walking_011.png" id="16_7h4ix"]
+[ext_resource type="Texture2D" uid="uid://dvcr1miwhoj1i" path="res://Player/Assets/Walking/Walking_012.png" id="17_ejtll"]
+[ext_resource type="Texture2D" uid="uid://dmtsyfi80f14j" path="res://Player/Assets/Walking/Walking_013.png" id="18_h56ko"]
+[ext_resource type="Texture2D" uid="uid://bpch1lx3n6jv8" path="res://Player/Assets/Walking/Walking_014.png" id="19_clkps"]
+[ext_resource type="Texture2D" uid="uid://csq0xgktkdarq" path="res://Player/Assets/Walking/Walking_015.png" id="20_ky8cl"]
+[ext_resource type="Texture2D" uid="uid://cjvbkydud6g32" path="res://Player/Assets/Walking/Walking_016.png" id="21_u0mxe"]
+[ext_resource type="Texture2D" uid="uid://c8m8jkx8kxqjx" path="res://Player/Assets/Walking/Walking_017.png" id="22_8lalt"]
+[ext_resource type="PackedScene" uid="uid://df72lwrgk4pe6" path="res://Scenes/Level1/LinghtText.tscn" id="25_jbsgw"]
+[ext_resource type="Script" uid="uid://ch5phny4wgj8o" path="res://Scenes/Level1/lighting.gd" id="25_pa2ln"]
+[ext_resource type="Shader" uid="uid://bokjrnlgsby3m" path="res://Scenes/Level1/Lighting.gdshader" id="25_pp8ys"]
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_yq8de"]
-texture = ExtResource("1_gmjs3")
-texture_region_size = Vector2i(128, 128)
-19:0/0 = 0
-19:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tilemap"]
+shader = ExtResource("1_lighting_shader")
+shader_parameter/light_count = 8
+shader_parameter/light_falloff = 0.8
+shader_parameter/apply_distance_fade = true
+shader_parameter/object_height = 0.0
+shader_parameter/shadows = true
+shader_parameter/soft_shadows = true
+shader_parameter/light_radius = 200.0
+shader_parameter/shadow_march_count = 128
+shader_parameter/shadow_march_min_step = 0.1
+shader_parameter/shadow_march_step_scale = 1.2
+shader_parameter/ambient_amount = 0.2
+shader_parameter/use_directional_light_as_ambient = false
+shader_parameter/ambient_occlusion = false
+shader_parameter/ao_step_count = 4
+shader_parameter/ao_step_size = 16.0
+shader_parameter/ao_influence = 0.2
 
-[sub_resource type="TileSet" id="TileSet_vxb1s"]
-tile_size = Vector2i(128, 128)
-physics_layer_0/collision_layer = 16
-terrain_set_0/mode = 0
-sources/0 = SubResource("TileSetAtlasSource_yq8de")
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_vxb1s"]
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ti6lw"]
 texture = ExtResource("2_yq8de")
 texture_region_size = Vector2i(128, 128)
-11:4/0 = 0
-10:4/0 = 0
-12:4/0 = 0
-12:5/0 = 0
-12:6/0 = 0
-11:6/0 = 0
-10:6/0 = 0
-10:5/0 = 0
-11:5/0 = 0
-10:7/0 = 0
-11:7/0 = 0
-12:7/0 = 0
-13:4/0 = 0
-14:4/0 = 0
-14:5/0 = 0
-13:5/0 = 0
+5:4/0 = 0
+5:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:4/0 = 0
+6:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:4/0 = 0
+7:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:5/0 = 0
+7:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:6/0 = 0
+7:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:6/0 = 0
+6:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:6/0 = 0
+5:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:5/0 = 0
+5:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:5/0 = 0
+6:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:7/0 = 0
+5:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:7/0 = 0
+6:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:7/0 = 0
+7:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:7/0 = 0
+8:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:7/0 = 0
+9:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:8/0 = 0
+9:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+10:8/0 = 0
+10:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+10:9/0 = 0
+10:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+11:9/0 = 0
+11:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+12:9/0 = 0
+12:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:9/0 = 0
+13:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:9/0 = 0
+14:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+15:9/0 = 0
+15:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+16:8/0 = 0
+16:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+15:8/0 = 0
+15:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:8/0 = 0
+14:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:8/0 = 0
+13:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+12:8/0 = 0
+12:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+11:8/0 = 0
+11:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:7/0 = 0
+13:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:6/0 = 0
+13:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:6/0 = 0
+14:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:7/0 = 0
+14:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:3/0 = 0
+14:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:3/0 = 0
+13:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:2/0 = 0
+13:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:2/0 = 0
+14:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:4/0 = 0
+8:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:4/0 = 0
+9:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:5/0 = 0
+9:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:5/0 = 0
+8:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+3:7/0 = 0
+3:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+4:7/0 = 0
+4:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+0:8/0 = 0
+0:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+1:8/0 = 0
+1:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+2:8/0 = 0
+2:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+3:8/0 = 0
+3:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+4:8/0 = 0
+4:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:8/0 = 0
+5:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:8/0 = 0
+6:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:8/0 = 0
+7:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:8/0 = 0
+8:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:9/0 = 0
+9:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:10/0 = 0
+9:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+9:11/0 = 0
+9:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:11/0 = 0
+8:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:11/0 = 0
+7:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:11/0 = 0
+6:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:11/0 = 0
+5:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+4:11/0 = 0
+4:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+3:11/0 = 0
+3:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+2:11/0 = 0
+2:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+1:11/0 = 0
+1:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+0:11/0 = 0
+0:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+0:10/0 = 0
+0:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+0:9/0 = 0
+0:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+1:9/0 = 0
+1:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+2:9/0 = 0
+2:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+3:9/0 = 0
+3:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+4:9/0 = 0
+4:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:9/0 = 0
+5:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:9/0 = 0
+6:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:9/0 = 0
+7:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:9/0 = 0
+8:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+8:10/0 = 0
+8:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+7:10/0 = 0
+7:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+6:10/0 = 0
+6:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+5:10/0 = 0
+5:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+4:10/0 = 0
+4:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+3:10/0 = 0
+3:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+2:10/0 = 0
+2:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+1:10/0 = 0
+1:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+10:10/0 = 0
+10:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+11:10/0 = 0
+11:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+12:10/0 = 0
+12:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:10/0 = 0
+13:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:10/0 = 0
+14:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+15:10/0 = 0
+15:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+15:11/0 = 0
+15:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+14:11/0 = 0
+14:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+13:11/0 = 0
+13:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+12:11/0 = 0
+12:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+11:11/0 = 0
+11:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+10:11/0 = 0
+10:11/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+16:9/0 = 0
+16:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
 
-[sub_resource type="TileSet" id="TileSet_teab5"]
+[sub_resource type="TileSet" id="TileSet_hbmps"]
 tile_size = Vector2i(128, 128)
 physics_layer_0/collision_layer = 16
 terrain_set_0/mode = 0
-terrain_set_0/terrain_0/name = "Terrain 0"
-terrain_set_0/terrain_0/color = Color(0.5, 0.34375, 0.25, 1)
-sources/0 = SubResource("TileSetAtlasSource_vxb1s")
+sources/0 = SubResource("TileSetAtlasSource_ti6lw")
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_l1kjp"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("5_mxj31")
+}],
+"loop": true,
+"name": &"Idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("5_mxj31")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_f2dey")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_pa2ln")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_pp8ys")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_jbsgw")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_f670y")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_5e7i2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_w6s21")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_00xbt")
+}, {
+"duration": 1.0,
+"texture": ExtResource("14_hlf8a")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_uhwcv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("16_7h4ix")
+}, {
+"duration": 1.0,
+"texture": ExtResource("17_ejtll")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_h56ko")
+}, {
+"duration": 1.0,
+"texture": ExtResource("19_clkps")
+}, {
+"duration": 1.0,
+"texture": ExtResource("20_ky8cl")
+}, {
+"duration": 1.0,
+"texture": ExtResource("21_u0mxe")
+}, {
+"duration": 1.0,
+"texture": ExtResource("22_8lalt")
+}],
+"loop": true,
+"name": &"Walk",
+"speed": 15.0
+}]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_i1fuu"]
+radius = 58.0
+height = 244.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jbsgw"]
+shader = ExtResource("25_pp8ys")
+shader_parameter/modulate_color = Color(0, 0.0431373, 0.235294, 0.984314)
+shader_parameter/black_point = Color(0, 0, 0, 1)
+shader_parameter/lights = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/light_radii = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/time_scales = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/variation_amounts = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/falloff_band_1 = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/falloff_band_2 = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/number_of_lights = 1
+shader_parameter/band_1_strength = 0.3
+shader_parameter/band_2_strength = 0.6
+shader_parameter/light_colors = PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/intensities = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/attenuations = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/light_glow_radii = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/light_glow_intensities = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/global_flicker_intensity = 0.0
+shader_parameter/global_flicker_speed = 1.0
+shader_parameter/light_flicker_intensities = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/light_flicker_speeds = PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/wobble_amp = 1.0
+shader_parameter/wobble_freq = 6.0
+shader_parameter/wobble_speed = 5.0
+shader_parameter/camera_offset = Vector2(0, 0)
 
 [node name="Level1" type="Node2D"]
 script = ExtResource("3_level1_script")
 
-[node name="Map" type="Node2D" parent="."]
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+material = SubResource("ShaderMaterial_tilemap")
+tile_map_data = PackedByteArray("AAAAAAYAAAAGAAUAAAABAAYAAAAGAAUAAAACAAYAAAAGAAUAAAADAAYAAAAGAAUAAAAEAAYAAAAGAAUAAAAFAAYAAAAGAAUAAAAGAAYAAAAGAAUAAAAHAAYAAAAGAAUAAAAIAAYAAAAGAAUAAAAJAAYAAAAGAAUAAAAKAAYAAAAGAAUAAAALAAYAAAAGAAUAAAAMAAYAAAAGAAUAAAANAAYAAAAGAAUAAAAOAAYAAAAGAAUAAAAPAAYAAAAGAAUAAAAQAAYAAAAGAAUAAAARAAYAAAAGAAUAAAASAAYAAAAGAAUAAAATAAYAAAAGAAUAAAAUAAYAAAAGAAUAAAAVAAYAAAAGAAUAAAAWAAYAAAAGAAUAAAAXAAYAAAAGAAUAAAAYAAYAAAAGAAUAAAAZAAYAAAAGAAUAAAAaAAYAAAAGAAUAAAAgAAYAAAAGAAUAAAAfAAYAAAAGAAUAAAAeAAYAAAAGAAUAAAAdAAYAAAAGAAUAAAAcAAYAAAAGAAUAAAAbAAYAAAAGAAUAAAAFAAUAAAAGAAUAAAAFAAQAAAAEAAkAAAAFAAMAAAAEAAkAAAAGAAMAAAAEAAkAAAAHAAMAAAAEAAkAAAAIAAMAAAAEAAkAAAAJAAMAAAAEAAkAAAAKAAMAAAAGAAUAAAALAAMAAAAGAAUAAAALAAQAAAAGAAUAAAALAAUAAAAGAAUAAAAKAAUAAAAGAAUAAAAJAAUAAAAEAAkAAAAJAAQAAAAEAAkAAAAKAAQAAAAGAAUAAAAHAAQAAAAEAAkAAAAEAAUAAAAGAAUAAAAEAAQAAAAGAAUAAAAEAAMAAAAGAAUAAAAEAAIAAAAGAAUAAAAFAAIAAAAGAAUAAAAGAAIAAAAGAAUAAAAHAAIAAAAGAAUAAAAIAAIAAAAGAAUAAAAJAAIAAAAGAAUAAAAMAAMAAAAGAAUAAAANAAMAAAAGAAUAAAANAAIAAAAGAAUAAAAMAAIAAAAGAAUAAAALAAIAAAAGAAUAAAAKAAIAAAAGAAUAAAAMAAQAAAAGAAUAAAAMAAUAAAAGAAUAAAANAAUAAAAGAAUAAAANAAQAAAAGAAUAAAAOAAUAAAAGAAUAAAAOAAQAAAAGAAUAAAAOAAMAAAAGAAUAAAAOAAIAAAAGAAUAAAANAAEAAAAGAAUAAAAMAAEAAAAGAAUAAAALAAEAAAAGAAUAAAAKAAEAAAAGAAUAAAAJAAEAAAAGAAUAAAAIAAEAAAAGAAUAAAAEAAEAAAAGAAUAAAADAAEAAAAGAAUAAAADAAIAAAAGAAUAAAADAAMAAAAGAAUAAAADAAQAAAAGAAUAAAADAAUAAAAGAAUAAAAEAAAAAAAGAAUAAAAEAP//AAAGAAUAAAAFAAEAAAAGAAUAAAAGAAEAAAAGAAUAAAAHAAEAAAAGAAUAAAA=")
+tile_set = SubResource("TileSet_hbmps")
 
-[node name="Maze" type="TileMapLayer" parent="Map"]
-tile_set = SubResource("TileSet_vxb1s")
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(825, 716)
+scale = Vector2(0.35, 0.35)
+script = ExtResource("4_simple_player_script")
 
-[node name="Dirt" type="TileMapLayer" parent="Map"]
-tile_set = SubResource("TileSet_teab5")
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Player"]
+position = Vector2(3, -9)
+sprite_frames = SubResource("SpriteFrames_l1kjp")
+animation = &"Idle"
 
-[node name="Player" parent="." instance=ExtResource("4_teab5")]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+light_mask = 16
+position = Vector2(1, -23)
+shape = SubResource("CapsuleShape2D_i1fuu")
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+
+[node name="LightSource" parent="Player" instance=ExtResource("25_jbsgw")]
+position = Vector2(37.143, -60.714)
+scale = Vector2(2.85714, 2.85714)
+radius = 128.0
+light_color = Color(1, 1, 1, 0)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Lighting" type="ColorRect" parent="CanvasLayer" node_paths=PackedStringArray("camera")]
+material = SubResource("ShaderMaterial_jbsgw")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 204.0
+offset_top = 3.0
+offset_right = 201.0
+offset_bottom = 3.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.1, 0.15, 1)
+script = ExtResource("25_pa2ln")
+camera = NodePath("../../Player/Camera2D")

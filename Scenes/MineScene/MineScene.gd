@@ -3,28 +3,21 @@ extends Node2D
 @onready var dirt_layer: TileMapLayer = $Dirt
 @onready var ore_layer: TileMapLayer = $Ore
 @onready var player: CharacterBody2D = $Player
-# @onready var light_system: DirectionalLight2D = $LightSystem
+@onready var canvas_modulate: CanvasModulate = $CanvasModulate
 
-var torch_lights: Node2D # 动态创建，不用@onready
-
-# 火把照明系统
+# 光照系统 - 使用Godot内置光照
+var torch_lights: Node2D
 var torch_light_scene = preload("res://Scenes/LightScene/LightScene.tscn")
 var active_torch_lights = {}
 
 func _ready():
-	print("MineScene _ready 开始")
-	print("Dirt层: ", dirt_layer)
-	print("Ore层: ", ore_layer)
-	print("Player: ", player)
-	
 	# 等待一帧确保所有节点都初始化完成
 	await get_tree().process_frame
 
-	
 	# 创建火把光源容器
 	create_torch_lights_container()
-	
-	# 生成地形（通过TerrainGenerator）
+
+	# 生成地形
 	if dirt_layer:
 		# 连接火把创建信号
 		if dirt_layer.has_signal("torch_created"):
@@ -39,75 +32,43 @@ func _ready():
 				var spawn_pos = dirt_layer.get_player_spawn_position()
 				player.global_position = spawn_pos
 				print("玩家位置设置为:", spawn_pos)
+				
 		else:
 			print("错误: dirt_layer没有generate_terrain方法")
 	else:
 		print("错误: dirt_layer为null")
 	
-	# 创建火把照明
-	create_torch_lights()
-	
 	# 启动玩家深度监控定时器
 	var timer = Timer.new()
-	timer.wait_time = 1.0 # 每秒检查一次
+	timer.wait_time = 1.0
 	timer.timeout.connect(_check_player_depth)
 	timer.autostart = true
 	add_child(timer)
 
-#func setup_lighting():
-	#"""设置基础照明系统"""
-	#if light_system:
-		## 设置微弱的环境光 - 亮度提升50%
-		#light_system.energy = 15.25
-		#light_system.color = Color(0, 0, 0, 1)
-	# 保持原始深色设置以配合火把照明系统，但稍微提亮以配合更亮的火把
-	#var canvas_modulate = $CanvasModulate
-	#if canvas_modulate:
-		#canvas_modulate.color = Color(0.12, 0.12, 0.12, 1)
 
-func create_torch_lights_container():
-	"""创建火把光源容器"""
-	if not torch_lights:
-		torch_lights = Node2D.new()
-		torch_lights.name = "TorchLights"
-		add_child(torch_lights)
-		print("创建火把光源容器")
-
-func create_torch_lights():
-	"""为所有火把创建光源"""
-	if not dirt_layer:
-		return
-	
-	# 创建火把光源容器
-	if not torch_lights:
-		torch_lights = Node2D.new()
-		torch_lights.name = "TorchLights"
-		add_child(torch_lights)
-	
-	
 func create_torch_light(grid_pos: Vector2):
+	"""创建火把光源"""
 	if active_torch_lights.has(grid_pos):
 		return
 	if not torch_lights:
 		torch_lights = Node2D.new()
 		torch_lights.name = "TorchLights"
+		torch_lights.z_index = 1
 		add_child(torch_lights)
+	
 	var world_pos = dirt_layer.map_to_local(grid_pos)
+	
 	if torch_light_scene:
 		var light_instance = torch_light_scene.instantiate()
 		torch_lights.add_child(light_instance)
 		light_instance.global_position = world_pos
-		if light_instance.has_method("setup_torch_light"):
-			light_instance.setup_torch_light()
-		elif light_instance is PointLight2D:
-			# 火把光源亮度和距离提升50%
-			light_instance.energy = 1.5
-			light_instance.texture_scale = 3.0
-			light_instance.color = Color(1.0, 0.8, 0.5, 1)
+		light_instance.visible = true
+		
 		active_torch_lights[grid_pos] = light_instance
 		print("在位置", grid_pos, "创建火把光源")
 
 func remove_torch_light(grid_pos: Vector2):
+	"""移除火把光源"""
 	if active_torch_lights.has(grid_pos):
 		var light_instance = active_torch_lights[grid_pos]
 		if light_instance and is_instance_valid(light_instance):
@@ -116,102 +77,25 @@ func remove_torch_light(grid_pos: Vector2):
 		print("移除位置", grid_pos, "的火把光源")
 
 func clear_all_torch_lights():
+	"""清除所有火把光源"""
 	for light_instance in active_torch_lights.values():
 		if light_instance and is_instance_valid(light_instance):
 			light_instance.queue_free()
 	active_torch_lights.clear()
 	print("清除了所有火把光源")
 
-# 便捷的预设密度函数
-func set_torch_density_low():
-	"""设置低密度火把 (密度0.2, 距离8)"""
-	set_torch_density(0.2)
-	set_torch_distance(8)
-	regenerate_torches()
-	print("已设置为低密度火把")
-
-func set_torch_density_medium():
-	"""设置中等密度火把 (密度0.5, 距离5)"""
-	set_torch_density(0.5)
-	set_torch_distance(5)
-	regenerate_torches()
-	print("已设置为中等密度火把")
-
-func set_torch_density_high():
-	"""设置高密度火把 (密度0.8, 距离3)"""
-	set_torch_density(0.8)
-	set_torch_distance(3)
-	regenerate_torches()
-	print("已设置为高密度火把")
-
 func _on_torch_created(grid_pos: Vector2):
-	"""当火把被创建时的信号处理函数 - 来自TerrainGenerator的torch_created信号"""
+	"""当火把被创建时的信号处理函数"""
 	create_torch_light(grid_pos)
 
-# 处理火把密度控制快捷键
-func _input(event):
-	# 只在矿井场景中处理这些快捷键
-	if event is InputEventKey and event.pressed:
-		handle_torch_density_shortcut(event.keycode)
+func create_torch_lights_container():
+	"""创建火把光源容器"""
+	if not torch_lights:
+		torch_lights = Node2D.new()
+		torch_lights.name = "TorchLights"
+		torch_lights.z_index = 1
+		add_child(torch_lights)
 
-# 工具函数：火把密度快捷键
-func handle_torch_density_shortcut(keycode):
-	match keycode:
-		KEY_1:
-			set_torch_density_low()
-		KEY_2:
-			set_torch_density_medium()
-		KEY_3:
-			set_torch_density_high()
-		KEY_0:
-			clear_all_torch_lights()
-			if dirt_layer and dirt_layer.has_method("clear_all_torches"):
-				dirt_layer.clear_all_torches()
-			print("清除了所有火把")
-		KEY_T:
-			# 显示地形状态
-			if dirt_layer and dirt_layer.has_method("print_terrain_status"):
-				dirt_layer.print_terrain_status()
-		KEY_G:
-			# 手动触发新层生成
-			if dirt_layer and dirt_layer.has_method("generate_new_layers"):
-				dirt_layer.generate_new_layers()
-				print("手动生成了新的地形层")
-		KEY_H:
-			print("=== 火把密度控制帮助 ===")
-			print("数字键1 - 低密度火把 (20%密度, 8格距离)")
-			print("数字键2 - 中等密度火把 (50%密度, 5格距离)")
-			print("数字键3 - 高密度火把 (80%密度, 3格距离)")
-			print("数字键0 - 清除所有火把")
-			print("T键 - 显示地形状态")
-			print("G键 - 手动生成新层")
-			print("H键 - 显示此帮助信息")
-
-func set_torch_distance(distance: int):
-	"""设置火把之间的最小距离"""
-	if dirt_layer and dirt_layer.has_method("set_min_torch_distance"):
-		dirt_layer.set_min_torch_distance(distance)
-		print("设置火把最小距离为: ", distance)
-		
-func regenerate_torches():
-	"""重新生成火把并更新光源"""
-	if dirt_layer and dirt_layer.has_method("regenerate_torches_with_new_density"):
-		# 清除现有光源
-		clear_all_torch_lights()
-		
-		# 重新生成火把
-		dirt_layer.regenerate_torches_with_new_density()
-		print("重新生成了火把")
-
-func get_tile_at_position(world_pos: Vector2) -> Dictionary:
-	"""获取指定世界坐标的瓦片信息"""
-	if not dirt_layer:
-		return {}
-	
-	var grid_pos = dirt_layer.local_to_map(dirt_layer.to_local(world_pos))
-	return dirt_layer.terrain_data.get(grid_pos, {})
-
-# 挖掘功能 - 转发到 TerrainGenerator
 func dig_at_position(world_pos: Vector2) -> bool:
 	"""在指定世界位置挖掘"""
 	if not dirt_layer:
@@ -224,86 +108,13 @@ func dig_at_position(world_pos: Vector2) -> bool:
 		print("MineScene: 错误 - dirt_layer没有dig_at_position方法")
 		return false
 
-# 新增 - 放置火把功能
-func place_torch(world_pos: Vector2) -> bool:
-	"""在指定世界位置放置火把"""
-	print("MineScene: 尝试放置火把在位置", world_pos)
-	
-	if not dirt_layer:
-		print("MineScene: 错误 - dirt_layer不存在")
-		return false
-		
-	# 将世界坐标转换为网格坐标
-	var grid_pos = dirt_layer.local_to_map(dirt_layer.to_local(world_pos))
-	print("MineScene: 转换为网格坐标", grid_pos)
-	
-	# 首先检查原始位置
-	if try_place_torch_at(grid_pos):
-		return true
-		
-	# 如果原始位置不行，尝试周围8个方向
-	print("MineScene: 尝试周围位置...")
-	for x_offset in [-1, 0, 1]:
-		for y_offset in [-1, 0, 1]:
-			if x_offset == 0 and y_offset == 0:
-				continue # 跳过原来的位置
-			
-			var alt_pos = Vector2i(grid_pos.x + x_offset, grid_pos.y + y_offset)
-			if try_place_torch_at(alt_pos):
-				return true
-				
-	print("MineScene: 在原始位置及周围都无法放置火把")
-	return false
-
-# 辅助函数：尝试在特定网格坐标放置火把
-func try_place_torch_at(grid_pos: Vector2i) -> bool:
-	# 检查是否有方块可以放置火把
-	if not dirt_layer.terrain_data.has(Vector2(grid_pos.x, grid_pos.y)):
-		return false
-	
-	# 检查是否已经有火把
-	var tile_data = dirt_layer.terrain_data[Vector2(grid_pos.x, grid_pos.y)]
-	if tile_data.get("has_torch", false):
-		return false
-	
-	print("MineScene: 条件检查通过，开始放置火把在位置", grid_pos)
-	
-	# 检查torch_tile是否有效
-	print("MineScene: torch_tile =", dirt_layer.torch_tile)
-	
-	# 放置火把 - 火把应该放置在ore层，与地图生成的火把一致
-	if ore_layer:
-		ore_layer.set_cell(grid_pos, 1, dirt_layer.torch_tile)
-	else:
-		print("MineScene: 错误 - ore_layer不存在")
-		return false
-	
-	dirt_layer.terrain_data[Vector2(grid_pos.x, grid_pos.y)]["has_torch"] = true
-	
-	# 创建火把光源
-	create_torch_light(Vector2(grid_pos.x, grid_pos.y))
-	
-	print("MineScene: 成功放置火把在位置", grid_pos)
-	# 触发火把放置事件
-	_on_torch_created(Vector2(grid_pos.x, grid_pos.y))
-	
-	return true
-
-# 火把密度控制功能
-func set_torch_density(density: float):
-	"""设置火把密度 (0.1-1.0)"""
-	if dirt_layer and dirt_layer.has_method("set_torch_density"):
-		dirt_layer.set_torch_density(density)
-		print("设置火把密度为: ", density)
 
 func _check_player_depth():
 	"""检查玩家深度并在需要时生成新地形"""
 	if not player or not dirt_layer:
 		return
 	
-	# 获取玩家当前深度
 	var player_depth = dirt_layer.get_player_depth_from_position(player.global_position)
 	
-	# 检查是否需要生成新的地形层
 	if dirt_layer.has_method("check_and_generate_new_layers"):
 		dirt_layer.check_and_generate_new_layers(player_depth)
