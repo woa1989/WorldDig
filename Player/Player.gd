@@ -25,6 +25,13 @@ func _ready():
 	setup_modules()
 	setup_connections()
 
+func _input(event):
+	# 处理ESC键返回城镇
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		print("[DEBUG] ESC键被按下，返回城镇...")
+		# 使用全局GameManager切换场景，避免节点销毁问题
+		GameManager.change_scene_with_loading("res://Scenes/TownScene/TownScene.tscn")
+
 func _physics_process(_delta):
 	handle_unified_input()
 

@@ -21,6 +21,7 @@ var max_inventory_slots = 20
 
 # 游戏设置
 var current_scene = ""
+var is_loading_scene = false # 标记是否正在加载场景
 
 func _ready():
 	# 设置为自动加载单例
@@ -136,6 +137,36 @@ func player_died():
 func change_scene(scene_path):
 	current_scene = scene_path
 	get_tree().change_scene_to_file(scene_path)
+
+func change_scene_with_loading(scene_path: String):
+	"""使用LoadingScene切换场景"""
+	# 防止重复加载
+	if is_loading_scene:
+		print("[GameManager] 警告: 场景正在加载中，忽略重复请求")
+		return
+	
+	print("[GameManager] 开始使用LoadingScene切换到: ", scene_path)
+	is_loading_scene = true
+	
+	var loading_scene = preload("res://Scenes/LoadingScene/LoadingScene.tscn").instantiate()
+	get_tree().root.add_child(loading_scene)
+	
+	# 连接信号以在加载完成后重置标记
+	loading_scene.loading_completed.connect(_on_loading_completed)
+	loading_scene.loading_failed.connect(_on_loading_failed)
+	
+	loading_scene.switch_scene(scene_path)
+	current_scene = scene_path
+
+func _on_loading_completed(scene_path: String):
+	"""加载完成回调"""
+	print("[GameManager] 场景加载完成: ", scene_path)
+	is_loading_scene = false
+
+func _on_loading_failed(scene_path: String, error_message: String):
+	"""加载失败回调"""
+	print("[GameManager] 场景加载失败: ", scene_path, " 错误: ", error_message)
+	is_loading_scene = false
 
 func get_material_value(material):
 	# 返回材料的价值

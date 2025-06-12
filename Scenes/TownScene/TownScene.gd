@@ -53,14 +53,6 @@ func setup_building_interactions():
 
 func _input(event):
 	# 处理按键输入
-	if event.is_action_pressed("ui_cancel"):
-		# ESC键返回开始菜单
-		var game_manager = get_node_or_null("/root/GameManager")
-		if game_manager:
-			game_manager.change_scene("res://Scenes/StartScene/StartScene.tscn")
-		else:
-			get_tree().change_scene_to_file("res://Scenes/StartScene/StartScene.tscn")
-	
 	# 空格键进入建筑
 	if event.is_action_pressed("ui_accept") and current_building:
 		enter_building(current_building)

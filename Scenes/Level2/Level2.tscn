@@ -41,15 +41,12 @@ tile_map_data = PackedByteArray("AAADAAMAAAABAAEAAAADAAQAAAABAAEAAAADAAUAAAABAAE
 tile_set = SubResource("TileSet_bkhg0")
 
 [node name="one" type="LightOccluder2D" parent="."]
-scale = Vector2(1, 1)
 occluder = SubResource("OccluderPolygon2D_bwxna")
 
 [node name="one2" type="LightOccluder2D" parent="."]
-scale = Vector2(1, 1)
 occluder = SubResource("OccluderPolygon2D_bkhg0")
 
 [node name="one3" type="LightOccluder2D" parent="."]
-scale = Vector2(1, 1)
 occluder = SubResource("OccluderPolygon2D_3nvn4")
 
 [node name="TileMapLayer2" type="TileMapLayer" parent="."]
