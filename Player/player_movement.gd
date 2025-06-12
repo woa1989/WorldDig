@@ -27,6 +27,7 @@ var is_wall_sliding = false
 var is_wall_jumping = false
 var wall_direction = 0
 var can_down_attack = false
+var previous_on_floor = false
 
 # 下砸攻击相关
 var is_down_attacking = false
@@ -38,19 +39,40 @@ var is_bouncing = false
 var bounce_timer = 0.0
 
 @onready var player: CharacterBody2D = get_parent()
-@onready var animated_sprite = player.get_node("AnimatedSprite2D")
+var animated_sprite: AnimatedSprite2D
 
 func _ready():
 	bounce_gravity_factor = 0.3
+	# 确保在player完全初始化后获取animated_sprite引用
+	animated_sprite = player.get_node("AnimatedSprite2D")
+	print("[DEBUG] PlayerMovement获取动画精灵引用: ", animated_sprite)
 
 func _physics_process(delta):
+	# 即使玩家死亡，也更新计时器和应用重力，以确保死亡动画可以正确下落
 	update_timers(delta)
+	
+	# 检查玩家是否已死亡
+	if "is_dead" in player and player.is_dead:
+		# 死亡时只应用重力和移动，不处理任何输入
+		handle_gravity(delta)
+		# 让玩家慢慢停下来
+		player.velocity.x = move_toward(player.velocity.x, 0, speed * 0.5)
+		player.move_and_slide()
+		return
+	
+	# 正常的物理处理流程
 	detect_wall()
 	handle_gravity(delta)
 	handle_jumping()
 	handle_movement()
 	
 	player.move_and_slide()
+	
+	# 在调用更新动画前记录当前速度（减少日志输出）
+	if abs(player.velocity.x) > 10.0 or player.is_on_floor() != previous_on_floor:
+		print("[ANIM DEBUG] 移动速度 X: ", round(player.velocity.x), " 在地面: ", player.is_on_floor())
+		previous_on_floor = player.is_on_floor()
+	
 	update_animations()
 	update_ground_state()
 
@@ -75,6 +97,10 @@ func handle_gravity(delta):
 
 func handle_jumping():
 	"""处理跳跃逻辑"""
+	# 死亡后不能跳跃
+	if "is_dead" in player and player.is_dead:
+		return
+		
 	if Input.is_action_just_pressed("jump"):
 		if player.is_on_floor() or (coyote_timer > 0 and current_jumps == 0):
 			# 普通跳跃或土狼时间跳跃
@@ -117,6 +143,15 @@ func perform_wall_jump():
 func handle_movement():
 	"""处理水平移动"""
 	var direction = Input.get_axis("left", "right")
+	
+	# 检查是否正在被击退
+	var player_collision = player.get_node_or_null("PlayerCollision")
+	if player_collision and player_collision.has_method("is_knockback_active") and player_collision.is_knockback_active():
+		# 正在被击退时，减少玩家的控制力
+		if direction != 0:
+			# 击退期间玩家输入只有很小的影响
+			player.velocity.x = move_toward(player.velocity.x, player.velocity.x + direction * speed * 0.1, speed * 0.05)
+		return
 	
 	# 墙跳期间限制控制
 	if is_wall_jumping and wall_jump_timer > 0:
@@ -178,30 +213,72 @@ func check_wall_collision(direction: int) -> bool:
 
 func update_animations():
 	"""更新动画"""
-	# 检查是否有其他系统正在播放动画（如挖掘动画）
-	if animated_sprite and (animated_sprite.animation == "Dig" or animated_sprite.animation == "Hurt"):
-		# 不要打断挖掘或受伤动画
+	# 检查玩家是否已死亡，死亡后不更新动画
+	if "is_dead" in player and player.is_dead:
 		return
 	
-	if player.is_on_floor() and not is_wall_sliding:
-		if abs(player.velocity.x) > 50.0:
-			player.play_anim("Walk")
-		else:
-			player.play_anim("Idle")
-	elif is_wall_sliding and animated_sprite:
-		# 贴墙时使用闲置动画（没有专门的贴墙动画）
-		if animated_sprite.animation != "Idle":
-			animated_sprite.play("Idle")
-	elif not player.is_on_floor() and animated_sprite:
-		# 空中时使用跳跃动画
+	# 检查animated_sprite是否存在
+	if not animated_sprite:
+		print("[ERROR] AnimatedSprite2D引用丢失")
+		return
+	
+	# 检查是否在击退状态
+	var player_collision = player.get_node_or_null("PlayerCollision")
+	if player_collision and player_collision.has_method("is_knockback_active") and player_collision.is_knockback_active():
+		# 击退状态下使用跳跃动画
 		if animated_sprite.animation != "jump":
-			animated_sprite.play("jump")
+			print("[DEBUG] 击退状态中，强制使用跳跃动画")
+			player.play_anim("jump")
+		return
+		
+	# 检查是否有其他系统正在播放动画（如挖掘动画）
+	var protected_anims = ["Hurt", "Dying"]
+	if animated_sprite.animation in protected_anims:
+		# 受伤和死亡动画绝对不能被打断
+		print("[ANIM DEBUG] 高优先级动画播放中: ", animated_sprite.animation)
+		return
+	
+	# 检查Dig动画是否仍在使用中
+	if animated_sprite.animation == "Dig":
+		var player_combat = player.get_node_or_null("PlayerCombat")
+		var player_dig = player.get_node_or_null("PlayerDig")
+		
+		var is_attacking = player_combat and player_combat.is_attacking
+		var is_digging = player_dig and (player_dig.is_digging or player_dig.is_dig_animation_playing)
+		
+		if is_attacking or is_digging:
+			print("[ANIM DEBUG] Dig动画保护中 - 攻击:", is_attacking, " 挖掘:", is_digging)
+			return
+		else:
+			print("[ANIM DEBUG] Dig动画结束，允许切换动画")
+	
+	var current_anim = animated_sprite.animation
+	var new_anim = ""
+	
+	if player.is_on_floor() and not is_wall_sliding:
+		if abs(player.velocity.x) > 30.0:
+			new_anim = "Walk"
+		else:
+			new_anim = "Idle"
+	elif is_wall_sliding:
+		# 贴墙时使用闲置动画（没有专门的贴墙动画）
+		new_anim = "Idle"
+	elif not player.is_on_floor():
+		# 空中时使用跳跃动画
+		new_anim = "jump"
+	
+	# 只在动画需要改变时才播放
+	if new_anim != "" and current_anim != new_anim:
+		print("[DEBUG] 请求切换动画: ", current_anim, " -> ", new_anim, " (速度:", round(player.velocity.x), " 地面:", player.is_on_floor(), ")")
+		player.play_anim(new_anim)
 
 func update_ground_state():
 	"""更新地面状态"""
 	if player.is_on_floor():
 		current_jumps = 0
-		can_down_attack = false
+		# 铲子骑士式无限下砸攻击：只有在非反弹状态着地时才禁用下砸攻击
+		if not is_bouncing:
+			can_down_attack = false
 		coyote_timer = coyote_time
 	elif was_on_floor() and coyote_timer <= 0:
 		current_jumps = 1
@@ -227,12 +304,11 @@ func end_down_attack():
 	movement_state_changed.emit("end_down_attack")
 
 func trigger_bounce():
-	"""触发反弹"""
-	if not is_down_attacking:
-		return
-	
+	"""触发反弹 - 铲子骑士式"""
+	print("[DEBUG] 触发反弹 - 向上弹起")
 	player.velocity.y = bounce_velocity
 	is_bouncing = true
 	bounce_timer = bounce_gravity_reduction_time
 	is_down_attacking = false
+	can_down_attack = true # 铲子骑士式无限下砸攻击：反弹后可以再次下砸
 	movement_state_changed.emit("bounce")

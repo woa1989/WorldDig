@@ -11,11 +11,15 @@ extends CharacterBody2D
 @onready var hit_box = $HitBox
 @onready var down_attack_area = $DownAttackArea
 
+# 玩家状态
+var is_dead = false
+
 # 子系统模块
 var player_health: PlayerHealth
 var player_movement: PlayerMovement
 var player_combat: PlayerCombat
 var player_dig: PlayerDig
+var player_collision: Node
 
 # 游戏模式
 var is_rpg_mode = false
@@ -29,8 +33,9 @@ func _input(event):
 	# 处理ESC键返回城镇
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		print("[DEBUG] ESC键被按下，返回城镇...")
-		# 使用全局GameManager切换场景，避免节点销毁问题
-		GameManager.change_scene_with_loading("res://Scenes/TownScene/TownScene.tscn")
+		# 临时注释掉GameManager调用
+		# GameManager.change_scene_with_loading("res://Scenes/TownScene/TownScene.tscn")
+		get_tree().quit()
 
 func _physics_process(_delta):
 	handle_unified_input()
@@ -81,6 +86,12 @@ func setup_modules():
 	player_dig = PlayerDig.new()
 	player_dig.name = "PlayerDig"
 	add_child(player_dig)
+	
+	# 创建碰撞模块
+	player_collision = Node.new()
+	player_collision.set_script(preload("res://Player/player_collision.gd"))
+	player_collision.name = "PlayerCollision"
+	add_child(player_collision)
 
 func setup_connections():
 	"""设置信号连接"""
@@ -100,21 +111,15 @@ func setup_connections():
 
 func handle_unified_input():
 	"""统一输入处理"""
-	# 下砸攻击（两种模式都支持）
-	if (Input.is_action_just_pressed("dig") and Input.is_action_pressed("down") and
-		not is_on_floor() and player_movement and player_movement.can_down_attack and
-		not player_movement.is_down_attacking and not player_combat.is_attacking):
-		print("[DEBUG] 触发下砸攻击 - 模式: ", "RPG" if is_rpg_mode else "挖掘")
-		player_movement.start_down_attack()
-		player_combat.is_attacking = true
-		
-	elif (player_movement and player_movement.is_down_attacking and
-		  (not Input.is_action_pressed("down") or not Input.is_action_pressed("dig"))):
-		player_movement.end_down_attack()
-		player_combat.is_attacking = false
+	# 如果玩家已死亡，不处理任何输入
+	if is_dead:
+		return
+	
+	# 铲子骑士式下砸攻击：只有在DownAttackArea检测到碰撞时才能触发
+	# 这里不再直接处理下砸攻击输入，而是交给PlayerCombat处理
 	
 	# 模式特定输入
-	elif is_rpg_mode:
+	if is_rpg_mode:
 		handle_rpg_input()
 	else:
 		handle_dig_input()
@@ -149,20 +154,44 @@ func has_direction_input() -> bool:
 func play_anim(anim_name: String):
 	"""播放动画 - 保护重要动画不被打断"""
 	if not animated_sprite:
+		print("[ERROR] animated_sprite为空")
+		return
+		
+	# 如果玩家已死亡，强制播放死亡动画
+	if is_dead:
+		if anim_name != "Dying":
+			print("[DEBUG] 玩家已死亡，忽略其他动画请求: ", anim_name)
+			animated_sprite.play("Dying")
 		return
 	
-	# 保护重要动画不被一般动画打断
-	var protected_anims = ["Dig", "Hurt", "Dying"]
 	var current_anim = animated_sprite.animation
 	
-	# 如果当前是保护动画，且要播放的不是同一个动画，则不切换
-	if current_anim in protected_anims and anim_name != current_anim:
+	# 保护重要动画不被一般动画打断
+	var absolutely_protected_anims = ["Hurt", "Dying"]
+	if current_anim in absolutely_protected_anims and anim_name != current_anim:
+		print("[DEBUG] 绝对保护动画播放中，忽略: ", current_anim, " 请求: ", anim_name)
 		return
+	
+	# Dig动画的条件保护 - 只在实际使用时保护
+	if current_anim == "Dig" and anim_name != "Dig":
+		var combat_module = get_node_or_null("PlayerCombat")
+		var dig_module = get_node_or_null("PlayerDig")
+		
+		var is_attacking = combat_module and combat_module.is_attacking
+		var is_digging = dig_module and (dig_module.is_digging or dig_module.is_dig_animation_playing)
+		
+		if is_attacking or is_digging:
+			print("[DEBUG] Dig动画使用中，忽略: ", current_anim, " 请求: ", anim_name)
+			return
+		else:
+			print("[DEBUG] Dig动画已结束，允许切换到: ", anim_name)
 	
 	# 如果动画相同，不重复播放
 	if current_anim == anim_name:
 		return
-		
+	
+	# 直接播放动画
+	print("[DEBUG] 执行动画切换: ", current_anim, " -> ", anim_name)
 	animated_sprite.play(anim_name)
 
 func take_damage(damage: int, attacker = null) -> bool:
@@ -178,7 +207,11 @@ func _on_health_changed(new_health: int, max_health: int):
 
 func _on_player_died():
 	"""玩家死亡回调"""
-	print("[DEBUG] 玩家死亡")
+	print("[DEBUG] 玩家死亡回调 - 设置死亡状态")
+	is_dead = true
+	# 死亡动画已经在player_health.die()中播放了，这里不需要重复播放
+	# 不立即禁用物理处理，让死亡动画和重力继续工作
+	# 输入处理在 handle_unified_input() 中通过 is_dead 检查来阻止
 
 func _on_movement_state_changed(state: String):
 	"""移动状态变化回调"""

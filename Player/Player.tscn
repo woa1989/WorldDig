@@ -1,4 +1,4 @@
-[gd_scene load_steps=84 format=3 uid="uid://d3c8n07v0v8da"]
+[gd_scene load_steps=73 format=3 uid="uid://d3c8n07v0v8da"]
 
 [ext_resource type="Script" uid="uid://cau5xdu246qlu" path="res://Player/player.gd" id="1_3e2x5"]
 [ext_resource type="Texture2D" uid="uid://b77vxb47wsosx" path="res://Player/Assets/Attacking/Attacking_000.png" id="1_kb1oy"]
@@ -28,18 +28,6 @@
 [ext_resource type="Texture2D" uid="uid://mk3ty6nbd1mu" path="res://Player/Assets/Dying/Dying_012.png" id="25_n5tgw"]
 [ext_resource type="Texture2D" uid="uid://phvxu80auekb" path="res://Player/Assets/Dying/Dying_013.png" id="26_es2bh"]
 [ext_resource type="Texture2D" uid="uid://c506218xdftcy" path="res://Player/Assets/Dying/Dying_014.png" id="27_1fquw"]
-[ext_resource type="Texture2D" uid="uid://cflfuliyejks8" path="res://Player/Assets/Hurt/Hurt_000.png" id="28_vmo2g"]
-[ext_resource type="Texture2D" uid="uid://b2gw5k3orv30x" path="res://Player/Assets/Hurt/Hurt_001.png" id="29_b21l2"]
-[ext_resource type="Texture2D" uid="uid://dxmuqayq263e8" path="res://Player/Assets/Hurt/Hurt_002.png" id="30_xbrgp"]
-[ext_resource type="Texture2D" uid="uid://c1wgh6uyh2hem" path="res://Player/Assets/Hurt/Hurt_003.png" id="31_bowsq"]
-[ext_resource type="Texture2D" uid="uid://0e1wsxbs3kih" path="res://Player/Assets/Hurt/Hurt_004.png" id="32_2ubne"]
-[ext_resource type="Texture2D" uid="uid://bhkcf5rslkcga" path="res://Player/Assets/Hurt/Hurt_005.png" id="33_r8rh1"]
-[ext_resource type="Texture2D" uid="uid://cxyfajtmf2fbr" path="res://Player/Assets/Hurt/Hurt_006.png" id="34_p5ns6"]
-[ext_resource type="Texture2D" uid="uid://oxsb7m4lglfe" path="res://Player/Assets/Hurt/Hurt_007.png" id="35_81f5t"]
-[ext_resource type="Texture2D" uid="uid://bjqaeeso8dnbi" path="res://Player/Assets/Hurt/Hurt_008.png" id="36_xxjty"]
-[ext_resource type="Texture2D" uid="uid://ctrjyfaxf8fqt" path="res://Player/Assets/Hurt/Hurt_009.png" id="37_1lhl8"]
-[ext_resource type="Texture2D" uid="uid://xyepy8olr3p0" path="res://Player/Assets/Hurt/Hurt_010.png" id="38_6ygm5"]
-[ext_resource type="Texture2D" uid="uid://d0muj6tepgtwc" path="res://Player/Assets/Hurt/Hurt_011.png" id="39_jci5f"]
 [ext_resource type="Texture2D" uid="uid://4361dy7y6utk" path="res://Player/Assets/Idle/Idle_000.png" id="40_4gkk8"]
 [ext_resource type="Texture2D" uid="uid://b5hjqrwvkef3" path="res://Player/Assets/Idle/Idle_001.png" id="41_tsj4m"]
 [ext_resource type="Texture2D" uid="uid://dxn2ohrf0nxbq" path="res://Player/Assets/Idle/Idle_002.png" id="42_6b4rd"]
@@ -169,49 +157,8 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("27_1fquw")
 }],
-"loop": true,
+"loop": false,
 "name": &"Dying",
-"speed": 20.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": ExtResource("28_vmo2g")
-}, {
-"duration": 1.0,
-"texture": ExtResource("29_b21l2")
-}, {
-"duration": 1.0,
-"texture": ExtResource("30_xbrgp")
-}, {
-"duration": 1.0,
-"texture": ExtResource("31_bowsq")
-}, {
-"duration": 1.0,
-"texture": ExtResource("32_2ubne")
-}, {
-"duration": 1.0,
-"texture": ExtResource("33_r8rh1")
-}, {
-"duration": 1.0,
-"texture": ExtResource("34_p5ns6")
-}, {
-"duration": 1.0,
-"texture": ExtResource("35_81f5t")
-}, {
-"duration": 1.0,
-"texture": ExtResource("36_xxjty")
-}, {
-"duration": 1.0,
-"texture": ExtResource("37_1lhl8")
-}, {
-"duration": 1.0,
-"texture": ExtResource("38_6ygm5")
-}, {
-"duration": 1.0,
-"texture": ExtResource("39_jci5f")
-}],
-"loop": true,
-"name": &"Hurt",
 "speed": 20.0
 }, {
 "frames": [{
@@ -336,7 +283,7 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("76_wy7gj")
 }],
-"loop": true,
+"loop": false,
 "name": &"jump",
 "speed": 15.0
 }]
@@ -349,7 +296,10 @@ height = 240.0
 size = Vector2(180, 110)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_down_attack"]
-size = Vector2(16.25, 100)
+size = Vector2(42.5, 200)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_lr4jq"]
+size = Vector2(290, 63.75)
 
 [node name="Player" type="CharacterBody2D"]
 scale = Vector2(0.4, 0.4)
@@ -358,7 +308,7 @@ script = ExtResource("1_3e2x5")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_dter7")
-animation = &"jump"
+animation = &"Dig"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(-2, -20)
@@ -367,6 +317,7 @@ shape = SubResource("CapsuleShape2D_kb1oy")
 [node name="Camera2D" type="Camera2D" parent="."]
 
 [node name="PointLight2D" type="PointLight2D" parent="."]
+position = Vector2(-15, 0)
 shadow_enabled = true
 shadow_filter = 2
 texture = ExtResource("78_lr4jq")
@@ -382,20 +333,21 @@ scale = Vector2(0.999999, 0.999999)
 shape = SubResource("RectangleShape2D_00hy0")
 
 [node name="DownAttackArea" type="Area2D" parent="."]
-position = Vector2(0, 140)
+position = Vector2(0, 100)
 collision_layer = 4
 collision_mask = 18
 monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DownAttackArea"]
-position = Vector2(-0.625011, 27.5)
+position = Vector2(5, 130)
+scale = Vector2(1, 1)
 shape = SubResource("RectangleShape2D_down_attack")
 
 [node name="DebugVisual" type="ColorRect" parent="DownAttackArea"]
-offset_left = -10.0
-offset_top = -22.0
-offset_right = 8.0
-offset_bottom = 75.0
+offset_left = -27.5
+offset_top = 30.0
+offset_right = 35.5
+offset_bottom = 230.0
 color = Color(1, 0, 0, 0.3)
 
 [node name="HealthBar" parent="." instance=ExtResource("79_healthbar")]
@@ -404,3 +356,11 @@ offset_left = -82.5
 offset_top = -190.0
 offset_right = 84.5
 offset_bottom = -163.0
+
+[node name="EnemyDetectionArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnemyDetectionArea"]
+position = Vector2(2.5, -2.38419e-07)
+shape = SubResource("RectangleShape2D_lr4jq")

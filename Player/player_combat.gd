@@ -15,6 +15,10 @@ var is_parrying = false
 var parry_window_duration = 1000 # 毫秒
 var parry_timer = 0
 
+# 下砸攻击相关
+var is_in_down_attack_area = false # 玩家是否在下砸攻击区域内
+var down_attack_targets = [] # 当前在下砸攻击区域内的目标
+
 @onready var player: CharacterBody2D = get_parent()
 @onready var hit_box = player.get_node("HitBox")
 @onready var down_attack_area = player.get_node("DownAttackArea")
@@ -34,9 +38,24 @@ func _ready():
 	
 	if down_attack_area:
 		down_attack_area.body_entered.connect(_on_down_attack_area_body_entered)
+		down_attack_area.body_exited.connect(_on_down_attack_area_body_exited)
+		# 启用下砸攻击区域监听（铲子骑士式需要持续监听）
+		down_attack_area.monitoring = true
+		print("[DEBUG] DownAttackArea设置完成 - monitoring: ", down_attack_area.monitoring,
+			  " collision_mask: ", down_attack_area.collision_mask,
+			  " position: ", down_attack_area.position)
+	else:
+		print("[ERROR] DownAttackArea节点未找到！")
 
 func _process(delta):
 	update_parry_timer(delta)
+	
+	# 定期输出DownAttackArea状态（每秒一次）
+	if Engine.get_physics_frames() % 60 == 0:
+		if down_attack_targets.size() > 0:
+			print("[DEBUG] DownAttackArea状态 - 目标数: ", down_attack_targets.size(),
+				  " 区域激活: ", is_in_down_attack_area,
+				  " monitoring: ", down_attack_area.monitoring if down_attack_area else "null")
 
 func update_parry_timer(delta):
 	"""更新弹反计时器"""
@@ -55,6 +74,29 @@ func handle_combat_input():
 	
 	if Input.is_action_just_released("defend"):
 		end_defend()
+	
+	# 调试下砸攻击输入
+	if Input.is_action_just_pressed("dig"):
+		print("[DEBUG] 下砸攻击输入检测:")
+		print("  - dig键按下: ", Input.is_action_just_pressed("dig"))
+		print("  - 在下砸攻击区域: ", is_in_down_attack_area)
+		print("  - 未在攻击中: ", not is_attacking)
+		print("  - 不在地面: ", not player.is_on_floor())
+		print("  - 区域内目标数: ", down_attack_targets.size())
+		if down_attack_targets.size() > 0:
+			print("  - 目标列表: ", down_attack_targets.map(func(target): return target.name))
+	
+	# 临时简化条件：只要按下dig键且在空中就触发（用于调试）
+	if (Input.is_action_just_pressed("dig") and not player.is_on_floor()):
+		print("[DEBUG] 简化条件下砸攻击触发")
+		if is_in_down_attack_area and down_attack_targets.size() > 0:
+			print("[DEBUG] 触发铲子骑士式下砸攻击 - 区域内目标数量: ", down_attack_targets.size())
+			perform_down_attack()
+			# 立即触发反弹
+			if player_movement:
+				player_movement.trigger_bounce()
+		else:
+			print("[DEBUG] 下砸攻击条件不满足 - 区域:", is_in_down_attack_area, " 目标数:", down_attack_targets.size())
 
 func start_defend():
 	"""开始防御"""
@@ -92,6 +134,26 @@ func perform_attack():
 	is_attacking = false
 	if hit_box:
 		hit_box.monitoring = false
+	
+	# 攻击结束后恢复正常动画状态
+	restore_normal_animation()
+
+func restore_normal_animation():
+	"""攻击结束后恢复正常动画状态"""
+	if not player or not player_movement:
+		return
+	
+	# 标记攻击动画结束，让movement系统重新控制动画
+	if animated_sprite and animated_sprite.animation == "Dig":
+		print("[COMBAT DEBUG] 攻击动画结束，恢复正常动画状态")
+		# 根据当前状态设置正确的动画
+		if player.is_on_floor():
+			if abs(player.velocity.x) > 30.0:
+				player.play_anim("Walk")
+			else:
+				player.play_anim("Idle")
+		else:
+			player.play_anim("jump")
 
 func perform_melee_attack():
 	"""执行近战攻击（挖掘模式）"""
@@ -115,6 +177,9 @@ func perform_melee_attack():
 	is_attacking = false
 	if hit_box:
 		hit_box.monitoring = false
+	
+	# 攻击结束后恢复正常动画状态
+	restore_normal_animation()
 
 func update_hitbox_position():
 	"""更新攻击盒子位置"""
@@ -220,35 +285,62 @@ func _on_attack_area_body_entered(body):
 		body.take_damage(attack_damage, player)
 
 func _on_down_attack_area_body_entered(body):
-	"""下砸攻击区域检测"""
-	if not player_movement or not player_movement.is_down_attacking:
-		return
-	
+	"""下砸攻击区域检测 - 铲子骑士式"""
 	if body == player:
 		return
 	
-	var should_bounce = false
+	print("[DEBUG] DownAttackArea检测到物体进入:")
+	print("  - 物体名称: ", body.name)
+	print("  - 物体类型: ", body.get_class())
+	print("  - 物体脚本: ", body.get_script().get_path() if body.get_script() else "无脚本")
+	if body is CharacterBody2D or body is StaticBody2D or body is RigidBody2D:
+		print("  - 碰撞层: ", body.collision_layer)
+		print("  - 碰撞掩码: ", body.collision_mask)
 	
-	# 检查敌人
-	if body.has_method("take_damage"):
-		body.take_damage(attack_damage, player)
-		should_bounce = true
-	# 检查地面
-	elif (body.is_in_group("ground") or body.is_in_group("platform") or
-		  body.name.to_lower().contains("ground") or body.name.to_lower().contains("floor") or
-		  body.name.to_lower().contains("tile") or body is TileMapLayer or body is TileMap):
-		# 检查是否是RPG模式
-		if player.is_rpg_mode:
-			should_bounce = true
-		else:
-			# 挖掘模式下尝试挖掘
-			var player_dig = player.get_node_or_null("PlayerDig")
-			if player_dig and player_dig.perform_down_attack_dig():
-				should_bounce = true
-			else:
-				should_bounce = true
-	else:
-		should_bounce = true
+	# 添加目标到下砸攻击区域
+	if body not in down_attack_targets:
+		down_attack_targets.append(body)
+		is_in_down_attack_area = true
+		print("[DEBUG] 进入下砸攻击区域 - 目标: ", body.name, " 总目标数: ", down_attack_targets.size())
+
+func _on_down_attack_area_body_exited(body):
+	"""目标离开下砸攻击区域"""
+	if body == player:
+		return
 	
-	if should_bounce and player_movement:
-		player_movement.trigger_bounce()
+	# 从下砸攻击区域移除目标
+	if body in down_attack_targets:
+		down_attack_targets.erase(body)
+		if down_attack_targets.size() == 0:
+			is_in_down_attack_area = false
+		print("[DEBUG] 离开下砸攻击区域 - 目标: ", body.name, " 剩余目标数: ", down_attack_targets.size())
+
+func perform_down_attack():
+	"""执行铲子骑士式下砸攻击"""
+	is_attacking = true
+	
+	# 对区域内的所有目标造成伤害
+	for target in down_attack_targets:
+		if target and target.has_method("take_damage"):
+			print("[DEBUG] ⚔️ 下砸攻击对目标造成伤害: ", attack_damage)
+			target.take_damage(attack_damage, player)
+		elif target and (target.is_in_group("ground") or target.is_in_group("platform") or
+			target.name.to_lower().contains("ground") or target.name.to_lower().contains("floor") or
+			target.name.to_lower().contains("tile") or target is TileMapLayer or target is TileMap):
+			# 检查挖掘模式下的地面挖掘
+			if not player.is_rpg_mode:
+				var player_dig = player.get_node_or_null("PlayerDig")
+				if player_dig:
+					player_dig.perform_down_attack_dig()
+	
+	# 播放攻击动画
+	if animated_sprite:
+		animated_sprite.play("Dig")
+	
+	attack_performed.emit()
+	
+	# 短暂的攻击持续时间
+	await get_tree().create_timer(0.2).timeout
+	
+	is_attacking = false
+	restore_normal_animation()

@@ -1,9 +1,8 @@
-[gd_scene load_steps=9 format=4 uid="uid://3bfajiq1lvpl"]
+[gd_scene load_steps=8 format=4 uid="uid://3bfajiq1lvpl"]
 
 [ext_resource type="Texture2D" uid="uid://6m3bwl885e0p" path="res://Assets/mapPack_tilesheet_2X.png" id="1_oy6m2"]
 [ext_resource type="Texture2D" uid="uid://bk6pj6reu4vrs" path="res://Assets/newmap.png" id="2_l7ram"]
 [ext_resource type="PackedScene" uid="uid://d3c8n07v0v8da" path="res://Player/Player.tscn" id="3_87ail"]
-[ext_resource type="PackedScene" uid="uid://ctvcyanguhcyr" path="res://Scenes/LightScene/LightScene.tscn" id="4_74g24"]
 [ext_resource type="PackedScene" uid="uid://iigkdv2n7slv" path="res://RPG/Enemy/Enemy.tscn" id="4_87ail"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_87ail"]
@@ -77,9 +76,3 @@ position = Vector2(2925, 800)
 
 [node name="Enemy2" parent="Enemies" instance=ExtResource("4_87ail")]
 position = Vector2(1699, 449)
-
-[node name="CanvasModulate" type="CanvasModulate" parent="."]
-color = Color(0.270588, 0.305882, 0.113725, 1)
-
-[node name="LightScene" parent="." instance=ExtResource("4_74g24")]
-position = Vector2(1211, 687)

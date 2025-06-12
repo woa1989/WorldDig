@@ -14,12 +14,15 @@ var is_digging = false
 var is_dig_animation_playing = false
 
 @onready var player: CharacterBody2D = get_parent()
-@onready var animated_sprite = player.get_node("AnimatedSprite2D")
+var animated_sprite: AnimatedSprite2D
 
 var player_movement: PlayerMovement
 
 func _ready():
 	player_movement = player.get_node("PlayerMovement")
+	# 确保在player完全初始化后获取animated_sprite引用
+	animated_sprite = player.get_node("AnimatedSprite2D")
+	print("[DEBUG] PlayerDig获取动画精灵引用: ", animated_sprite)
 
 func _process(delta):
 	if dig_timer > 0:
@@ -127,13 +130,22 @@ func end_dig_animation():
 	await get_tree().process_frame
 	
 	# 恢复正常动画状态
-	if player.is_on_floor():
-		if abs(player.velocity.x) > 50.0:
-			animated_sprite.play("Walk")
+	restore_normal_animation_after_dig()
+
+func restore_normal_animation_after_dig():
+	"""挖掘结束后恢复正常动画状态"""
+	if not player or not animated_sprite:
+		return
+	
+	# 让movement系统重新评估并设置正确的动画
+	if animated_sprite.animation == "Dig":
+		if player.is_on_floor():
+			if abs(player.velocity.x) > 30.0:
+				player.play_anim("Walk")
+			else:
+				player.play_anim("Idle")
 		else:
-			animated_sprite.play("Idle")
-	else:
-		animated_sprite.play("jump")
+			player.play_anim("jump")
 
 func try_dig_nearby(world_position: Vector2) -> bool:
 	"""尝试在附近挖掘"""

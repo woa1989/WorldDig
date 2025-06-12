@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://iigkdv2n7slv"]
+[gd_scene load_steps=18 format=3 uid="uid://iigkdv2n7slv"]
 
 [ext_resource type="Script" uid="uid://nr85vytgaymu" path="res://RPG/Enemy/enemy.gd" id="1_fwvcy"]
 [ext_resource type="Texture2D" uid="uid://dvnrfdlgjh6q" path="res://RPG/Enemy/enemy.webp" id="1_sbhnn"]
@@ -333,6 +333,9 @@ blend_mode = 1
 offsets = PackedFloat32Array(0.5, 1)
 colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_player_detection"]
+size = Vector2(261, 200)
+
 [node name="Enemy" type="CharacterBody2D"]
 collision_layer = 2
 collision_mask = 144
@@ -409,3 +412,10 @@ stream = ExtResource("3_mknhm")
 
 [node name="Explode" type="AudioStreamPlayer2D" parent="."]
 stream = ExtResource("4_fwvcy")
+
+[node name="PlayerDetectionArea" type="Area2D" parent="."]
+collision_layer = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetectionArea"]
+position = Vector2(2.5, -8)
+shape = SubResource("RectangleShape2D_player_detection")
