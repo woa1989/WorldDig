@@ -1,9 +1,15 @@
-[gd_scene load_steps=12 format=3 uid="uid://buxy02f35f5y5"]
+[gd_scene load_steps=39 format=3 uid="uid://buxy02f35f5y5"]
 
 [ext_resource type="Texture2D" uid="uid://uq5hcu4m5r1a" path="res://Fire/bgSprite/2DBackground_37.png" id="1_wnklm"]
 [ext_resource type="Texture2D" uid="uid://b6wxhi8busi0j" path="res://Fire/textures/T_1_pixel.jpg" id="2_2qkn5"]
 [ext_resource type="Shader" uid="uid://brwjkuegejlyg" path="res://Fire/shaders/s_fire_shader.tres" id="2_qk8vh"]
+[ext_resource type="Texture2D" uid="uid://bn8ujmktsp530" path="res://Fire/textures/T_VFX_MarbleNoise_tiled.png" id="3_oftr6"]
 [ext_resource type="Texture2D" uid="uid://cnrgg8n3152ve" path="res://Fire/textures/T_Gradient_circle22.jpg" id="4_3o6h3"]
+[ext_resource type="Script" uid="uid://f6ai5whj3a41" path="res://Fire/player.gd" id="6_ca001"]
+[ext_resource type="Texture2D" uid="uid://fnhxjjob3xod" path="res://Fire/canvas_texture/idle_canvas_texture.tres" id="6_xo0uv"]
+[ext_resource type="Texture2D" uid="uid://c0h2qaktwky1l" path="res://Fire/canvas_texture/jump_canvas_texture.tres" id="7_ca001"]
+[ext_resource type="Texture2D" uid="uid://k8853hu8jqtl" path="res://Fire/canvas_texture/run_canvas_texture.tres" id="8_0aajq"]
+[ext_resource type="Texture2D" uid="uid://cp4uus1geewdo" path="res://Assets/2d_lights_and_shadows_neutral_point_light.webp" id="10_0aajq"]
 
 [sub_resource type="Gradient" id="Gradient_2sork"]
 offsets = PackedFloat32Array(0, 0.413183, 1)
@@ -30,22 +36,237 @@ gradient = SubResource("Gradient_oftr6")
 shader = ExtResource("2_qk8vh")
 shader_parameter/Scale = Vector2(1, 1)
 shader_parameter/Speed = Vector2(0, 1)
+shader_parameter/Texture2DParameter = ExtResource("3_oftr6")
 shader_parameter/Texture_2 = SubResource("GradientTexture2D_xo0uv")
 shader_parameter/Texture_3 = ExtResource("4_3o6h3")
 shader_parameter/Texture_4 = SubResource("GradientTexture2D_0aajq")
 shader_parameter/Texture_5 = SubResource("GradientTexture1D_3o6h3")
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ca001"]
+size = Vector2(5000, 20)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7ie7d"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(0, 0, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_x41ll"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(128, 0, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rbmhk"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(0, 64, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yysx2"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(128, 64, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3wgke"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(0, 128, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s4dnh"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(128, 128, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4ydwf"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(0, 192, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ocx4t"]
+atlas = ExtResource("6_xo0uv")
+region = Rect2(128, 192, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3l1om"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(0, 0, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_klewy"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(128, 0, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ukvr3"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(0, 64, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fng4v"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(128, 64, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hh672"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(0, 128, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jg58q"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(128, 128, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dvp82"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(0, 192, 128, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tjjt3"]
+atlas = ExtResource("8_0aajq")
+region = Rect2(128, 192, 128, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_213td"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7ie7d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_x41ll")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rbmhk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yysx2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3wgke")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_s4dnh")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_4ydwf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ocx4t")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_ca001")
+}],
+"loop": true,
+"name": &"jump",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3l1om")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_klewy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ukvr3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fng4v")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hh672")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jg58q")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dvp82")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tjjt3")
+}],
+"loop": true,
+"name": &"run",
+"speed": 15.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xo0uv"]
+size = Vector2(47, 206)
+
+[sub_resource type="Gradient" id="Gradient_0aajq"]
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_7ie7d"]
+gradient = SubResource("Gradient_0aajq")
+fill = 1
+fill_from = Vector2(0.485043, 0.478632)
+fill_to = Vector2(0.950855, 0.143162)
+
 [node name="Fire" type="Node2D"]
 
-[node name="Map_stuff" type="Node2D" parent="."]
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.280542, 0.26327, 0.407478, 1)
 
-[node name="Sprite2D" type="Sprite2D" parent="Map_stuff"]
-position = Vector2(938, 537)
-scale = Vector2(1.4011, 1.39461)
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(1480.25, 658.5)
+scale = Vector2(2.27988, 1.65319)
 texture = ExtResource("1_wnklm")
+
+[node name="PointLight2D" type="PointLight2D" parent="."]
+position = Vector2(2099, 506)
+scale = Vector2(1, 1.58789)
+color = Color(0.953442, 0.209713, 0.0999414, 1)
+energy = 4.0
+texture = ExtResource("10_0aajq")
+texture_scale = 4.0
+height = 200.0
 
 [node name="StaticFire" type="Sprite2D" parent="."]
 material = SubResource("ShaderMaterial_7k83m")
-position = Vector2(1082, 682)
+position = Vector2(2089, 430)
 scale = Vector2(182.25, 183.25)
 texture = ExtResource("2_2qkn5")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+position = Vector2(-43, 1063)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
+position = Vector2(2500, 20)
+shape = SubResource("RectangleShape2D_ca001")
+
+[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
+visible = false
+
+[node name="ParallaxLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.5, 1)
+
+[node name="Sprite2D" type="Sprite2D" parent="ParallaxBackground/ParallaxLayer"]
+modulate = Color(0.6, 0.6, 0.6, 1)
+position = Vector2(1440, 294)
+scale = Vector2(2, 2)
+texture = ExtResource("1_wnklm")
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(436, 916)
+script = ExtResource("6_ca001")
+metadata/_edit_group_ = true
+
+[node name="body" type="AnimatedSprite2D" parent="Player"]
+position = Vector2(-16.5, -7.99994)
+scale = Vector2(4.77344, 5)
+sprite_frames = SubResource("SpriteFrames_213td")
+animation = &"run"
+frame_progress = 0.862405
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+position = Vector2(0, 33)
+shape = SubResource("RectangleShape2D_xo0uv")
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+zoom = Vector2(0.8, 0.8)
+limit_left = -500
+limit_top = -500
+limit_right = 2500
+limit_bottom = 1200
+position_smoothing_enabled = true
+rotation_smoothing_enabled = true
+drag_horizontal_enabled = true
+drag_vertical_enabled = true
+drag_vertical_offset = -50.0
+editor_draw_limits = true
+editor_draw_drag_margin = true
+
+[node name="PointLight2D" type="PointLight2D" parent="Player"]
+color = Color(0.91, 0.8281, 0.4186, 1)
+energy = 2.5
+texture = SubResource("GradientTexture2D_7ie7d")
+texture_scale = 6.0
+height = 32.0

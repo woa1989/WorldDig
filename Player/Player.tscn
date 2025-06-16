@@ -340,7 +340,6 @@ monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DownAttackArea"]
 position = Vector2(5, 130)
-scale = Vector2(1, 1)
 shape = SubResource("RectangleShape2D_down_attack")
 
 [node name="DebugVisual" type="ColorRect" parent="DownAttackArea"]

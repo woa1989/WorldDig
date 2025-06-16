@@ -6,7 +6,7 @@ class_name Lighting
 func _ready() -> void:
 	pass
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var light_positions = _get_light_positions()
 	var light_radii = _get_light_radii()
 	var time_scales = _get_time_scales()
